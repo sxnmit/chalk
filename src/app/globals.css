@@ -121,10 +121,23 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    background-color: #030712;
   }
+
   html {
     @apply font-sans;
+  }
+
+input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-background-clip: text;
+    -webkit-box-shadow: 0 0 0 9999px rgba(255, 255, 255, 0) inset !important;
+    -webkit-text-fill-color: white !important;
+
   }
 }
