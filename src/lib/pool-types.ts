@@ -2,6 +2,7 @@ export interface Rate {
   id: string
   name: string
   pricePerHour: number
+  isDefault: boolean
 }
 
 export interface TableSession {
@@ -20,34 +21,67 @@ export interface PoolTable {
   session?: TableSession
 }
 
-export const RATES: Rate[] = [
-  { id: "standard", name: "Standard", pricePerHour: 15 },
-  { id: "peak", name: "Peak (Fri–Sat)", pricePerHour: 20 },
-  { id: "happy-hour", name: "Happy Hour", pricePerHour: 10 },
-]
+// Populated at runtime from the database via initRates().
+// Starts empty — do not add hardcoded values here.
+export const RATES: Rate[] = []
 
-export function getDefaultRate(): Rate {
-  const now = new Date()
-  const hour = now.getHours()
-  const day = now.getDay()
-
-  // Happy hour: weekdays 4–6 pm
-  if (day >= 1 && day <= 5 && hour >= 16 && hour < 18) {
-    return RATES.find((r) => r.id === "happy-hour")!
-  }
-
-  // Peak: Friday and Saturday evenings
-  if ((day === 5 || day === 6) && hour >= 18) {
-    return RATES.find((r) => r.id === "peak")!
-  }
-
-  return RATES.find((r) => r.id === "standard")!
+export function initRates(rates: Rate[]) {
+  RATES.splice(0, RATES.length, ...rates)
 }
 
-export function calculateAmountOwed(startTime: Date, pricePerHour: number): number {
-  const durationMs = Date.now() - startTime.getTime()
-  const durationHours = durationMs / (1000 * 60 * 60)
-  return Math.max(0, durationHours * pricePerHour)
+export function getDefaultRate(): Rate {
+  return RATES.find((r) => r.isDefault) ?? RATES[0]
+}
+
+// Peak hours: Fri–Sat 8 pm – 3 am (anchored to local time)
+export function isPeakHour(date: Date): boolean {
+  const day = date.getDay()  // 0=Sun … 5=Fri, 6=Sat
+  const hour = date.getHours()
+  return (
+    (day === 5 && hour >= 20) ||  // Fri 8 pm →
+    (day === 6 && hour < 3)  ||  // Sat before 3 am (Fri night)
+    (day === 6 && hour >= 20) ||  // Sat 8 pm →
+    (day === 0 && hour < 3)       // Sun before 3 am (Sat night)
+  )
+}
+
+function getPeakRate(): number {
+  if (RATES.length === 0) return 25
+  return Math.max(...RATES.map((r) => r.pricePerHour))
+}
+
+export function calculateAmountOwed(
+  startTime: Date,
+  rate: Rate | undefined,
+  endTime?: Date
+): number {
+  if (!rate) return 0
+  const end = endTime ?? new Date()
+  const peakRate = getPeakRate()
+
+  // Flat billing: non-league and any rate already at/above peak price
+  if (rate.pricePerHour >= peakRate) {
+    const hours = (end.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+    return Math.max(0, hours * rate.pricePerHour)
+  }
+
+  // League billing: walk billing hours anchored to session start.
+  // Rate for each hour is determined by whether that hour's START falls in peak time.
+  // This implements the overlap rule: a non-peak hour that crosses 8 pm stays at the
+  // lower rate until the next billing hour boundary.
+  let total = 0
+  let hourStart = new Date(startTime)
+
+  while (hourStart < end) {
+    const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000)
+    const billingEnd = hourEnd <= end ? hourEnd : end
+    const fraction = (billingEnd.getTime() - hourStart.getTime()) / (1000 * 60 * 60)
+    const hourlyRate = isPeakHour(hourStart) ? peakRate : rate.pricePerHour
+    total += fraction * hourlyRate
+    hourStart = hourEnd
+  }
+
+  return Math.max(0, total)
 }
 
 export function formatDuration(startTime: Date, endTime?: Date): string {

@@ -25,6 +25,7 @@ function FreeContent() {
         <Image
           src="/pool_table.webp"
           alt="Pool table"
+          loading="eager"
           fill
           className="object-contain"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -97,14 +98,14 @@ export function TableCard({ table, onStartSession, onEndSession }: TableCardProp
 
   const rate = table.session ? RATES.find((r) => r.id === table.session!.rateId) : undefined
   const amountOwed = table.session
-    ? calculateAmountOwed(table.session.startTime, rate?.pricePerHour ?? 15)
+    ? calculateAmountOwed(table.session.startTime, rate)
     : 0
 
   return (
     <div
       className={`group relative flex flex-col overflow-hidden rounded-xl border transition-all ${isOccupied
-          ? "border-primary/50 bg-card shadow-lg shadow-primary/10"
-          : "border-border/50 bg-card hover:border-border"
+        ? "border-primary/50 bg-card shadow-lg shadow-primary/10"
+        : "border-border/50 bg-card hover:border-border"
         }`}
     >
       {/* Live indicator */}

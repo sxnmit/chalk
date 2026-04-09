@@ -1,8 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { LogOut, DollarSign, Users, CheckCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { LogOut, DollarSign, Users, CheckCircle, BarChart2 } from "lucide-react"
 
 interface StatChipProps {
   icon: React.ReactNode
@@ -15,8 +14,8 @@ function StatChip({ icon, label, value, highlight = false }: StatChipProps) {
   return (
     <div
       className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 xl:gap-4 xl:px-6 xl:py-3 ${highlight
-          ? "border-success/30 bg-success/10"
-          : "border-border/50 bg-secondary/50"
+        ? "border-success/30 bg-success/10"
+        : "border-border/50 bg-secondary/50"
         }`}
     >
       <span className={highlight ? "text-success" : "text-muted-foreground"}>{icon}</span>
@@ -36,6 +35,8 @@ export interface HeaderProps {
   activeTables: number
   completedSessions: number
   onLogout: () => void
+  isOwner?: boolean
+  onSummary?: () => void
 }
 
 export function Header({
@@ -44,6 +45,8 @@ export function Header({
   activeTables,
   completedSessions,
   onLogout,
+  isOwner = false,
+  onSummary,
 }: HeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 ">
@@ -65,16 +68,23 @@ export function Header({
           <span className="text-center text-xl font-bold uppercase tracking-widest text-foreground">
             {venueName}
           </span>
-          <div className="flex justify-end">
-            <Button
-              variant="ghost"
-              size="icon-lg"
+          <div className="flex items-center justify-end gap-2">
+            {isOwner && (
+              <button
+                onClick={onSummary}
+                className="touch-manipulation flex items-center justify-center rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
+              >
+                <BarChart2 className="h-5 w-5" />
+                <span className="sr-only">Today's Summary</span>
+              </button>
+            )}
+            <button
               onClick={onLogout}
-              className="text-muted-foreground hover:text-foreground"
+              className="touch-manipulation flex items-center justify-center rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
             >
               <LogOut className="h-5 w-5" />
               <span className="sr-only">Log out</span>
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -99,7 +109,7 @@ export function Header({
         </div>
 
         {/* ── Desktop (xl+): single three-column row ───────────────────────── */}
-        <div className="hidden xl:grid xl:grid-cols-3 xl:items-center">
+        <div className="hidden xl:grid xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:items-center">
           {/* Left — logo */}
           <div>
             <Image
@@ -113,8 +123,8 @@ export function Header({
           </div>
 
           {/* Center — venue name */}
-          <div className="flex justify-center">
-            <span className="text-2xl font-bold uppercase tracking-widest text-foreground xl:text-4xl">
+          <div className="flex min-w-0 justify-center px-6">
+            <span className="truncate text-2xl font-bold uppercase tracking-widest text-foreground xl:text-4xl">
               {venueName}
             </span>
           </div>
@@ -139,15 +149,22 @@ export function Header({
                 value={String(completedSessions)}
               />
             </div>
-            <Button
-              variant="ghost"
-              size="icon-lg"
+            {isOwner && (
+              <button
+                onClick={onSummary}
+                className="flex shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 px-6 py-3 text-primary transition-colors hover:bg-primary/10"
+              >
+                <BarChart2 className="h-6 w-6" />
+                <span className="sr-only">Today's Summary</span>
+              </button>
+            )}
+            <button
               onClick={onLogout}
-              className="shrink-0 text-muted-foreground hover:text-foreground"
+              className="flex shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 px-6 py-3 text-primary transition-colors hover:bg-primary/10"
             >
               <LogOut className="h-6 w-6" />
               <span className="sr-only">Log out</span>
-            </Button>
+            </button>
           </div>
         </div>
 

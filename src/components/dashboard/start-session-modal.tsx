@@ -5,7 +5,7 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PoolTable, Rate, RATES, getDefaultRate, formatCurrency } from "@/lib/pool-types"
+import { PoolTable, Rate, RATES, isPeakHour, formatCurrency } from "@/lib/pool-types"
 
 export interface StartSessionModalProps {
   table: PoolTable
@@ -14,7 +14,12 @@ export interface StartSessionModalProps {
 }
 
 export function StartSessionModal({ table, onConfirm, onCancel }: StartSessionModalProps) {
-  const defaultRate = getDefaultRate()
+  const currentlyPeak = isPeakHour(new Date())
+  const playerRates = RATES.filter((r) => !r.name.toLowerCase().includes("peak"))
+  const peakRate = RATES.find((r) => r.name.toLowerCase().includes("peak"))
+  const defaultRate = currentlyPeak
+    ? (peakRate ?? playerRates[0])
+    : (playerRates.find((r) => r.isDefault) ?? playerRates[0])
   const [playerName, setPlayerName] = useState("")
   const [selectedRate, setSelectedRate] = useState<Rate>(defaultRate)
 
@@ -59,31 +64,28 @@ export function StartSessionModal({ table, onConfirm, onCancel }: StartSessionMo
             />
           </div>
 
-          {/* Rate selector */}
-          <div className="space-y-2">
-            <Label className="text-foreground">Rate</Label>
-            <div className="grid gap-2">
-              {RATES.map((rate) => (
-                <button
-                  key={rate.id}
-                  type="button"
-                  onClick={() => setSelectedRate(rate)}
-                  className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${selectedRate.id === rate.id
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
-                    }`}
-                >
-                  <span className="font-medium">
-                    {rate.name}
-                    {rate.id === defaultRate.id && (
-                      <span className="ml-2 text-xs text-primary">(Current)</span>
-                    )}
-                  </span>
-                  <span className="text-sm">{formatCurrency(rate.pricePerHour)}/hr</span>
-                </button>
-              ))}
+          {/* Player type selector — hidden during peak hours */}
+          {!currentlyPeak && (
+            <div className="space-y-2">
+              <Label className="text-foreground">Player Type</Label>
+              <div className="grid gap-2">
+                {playerRates.map((rate) => (
+                  <button
+                    key={rate.id}
+                    type="button"
+                    onClick={() => setSelectedRate(rate)}
+                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${selectedRate.id === rate.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                  >
+                    <span className="font-medium">{rate.name} Player</span>
+                    <span className="text-sm">{formatCurrency(rate.pricePerHour)}/hr</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3">

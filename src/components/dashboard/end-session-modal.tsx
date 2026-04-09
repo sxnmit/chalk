@@ -23,7 +23,7 @@ export function EndSessionModal({ table, onConfirm, onCancel }: EndSessionModalP
 
   const rate = RATES.find((r) => r.id === session.rateId)
   const endTime = new Date()
-  const amountOwed = calculateAmountOwed(session.startTime, rate?.pricePerHour ?? 15)
+  const amountOwed = calculateAmountOwed(session.startTime, rate, endTime)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -71,7 +71,7 @@ export function EndSessionModal({ table, onConfirm, onCancel }: EndSessionModalP
           <div className="flex justify-between">
             <span className="text-muted-foreground">Rate</span>
             <span className="text-foreground">
-              {rate?.name} ({formatCurrency(rate?.pricePerHour ?? 15)}/hr)
+              {rate?.name} ({formatCurrency(rate?.pricePerHour ?? 25)}/hr)
             </span>
           </div>
 

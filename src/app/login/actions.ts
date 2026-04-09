@@ -3,6 +3,12 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
 
+export async function logoutAction() {
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  redirect("/login")
+}
+
 export async function loginAction(
   _prevState: string | null,
   formData: FormData
