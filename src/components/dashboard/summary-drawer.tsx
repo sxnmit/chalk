@@ -3,17 +3,11 @@
 import { useEffect, useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetCloseButton } from "@/components/ui/sheet"
 import { loadTodaySessions, TodaySession } from "@/app/dashboard/actions"
-import { formatTime, formatDuration, formatCurrency } from "@/lib/pool-types"
+import { formatTime, formatDuration, formatCurrency, sessionAmount } from "@/lib/pool-types"
 
 interface SummaryDrawerProps {
   open: boolean
   onClose: () => void
-}
-
-function sessionAmount(s: TodaySession): number {
-  const hours =
-    (new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()) / (1000 * 60 * 60)
-  return hours * s.actualRateCharged
 }
 
 export function SummaryDrawer({ open, onClose }: SummaryDrawerProps) {

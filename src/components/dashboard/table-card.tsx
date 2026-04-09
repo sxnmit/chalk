@@ -9,7 +9,6 @@ import {
   PoolTable,
   TableSession,
   Rate,
-  RATES,
   calculateAmountOwed,
   formatDuration,
   formatTime,
@@ -38,10 +37,20 @@ function FreeContent() {
 interface OccupiedContentProps {
   session: TableSession
   rate: Rate | undefined
-  amountOwed: number
+  peakRate: number
 }
 
-function OccupiedContent({ session, rate, amountOwed }: OccupiedContentProps) {
+// Isolated component — only this re-renders every second, not the whole card.
+function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate)
+
   return (
     <div className="flex flex-1 flex-col justify-between py-2">
       {/* Timer + player */}
@@ -81,25 +90,15 @@ function OccupiedContent({ session, rate, amountOwed }: OccupiedContentProps) {
 
 export interface TableCardProps {
   table: PoolTable
+  rates: Rate[]
   onStartSession: (tableId: string) => void
   onEndSession: (tableId: string) => void
 }
 
-export function TableCard({ table, onStartSession, onEndSession }: TableCardProps) {
+export function TableCard({ table, rates, onStartSession, onEndSession }: TableCardProps) {
   const isOccupied = !!table.session
-  const [, setTick] = useState(0)
-
-  // Tick every second to keep the live timer current
-  useEffect(() => {
-    if (!isOccupied) return
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [isOccupied])
-
-  const rate = table.session ? RATES.find((r) => r.id === table.session!.rateId) : undefined
-  const amountOwed = table.session
-    ? calculateAmountOwed(table.session.startTime, rate)
-    : 0
+  const rate = table.session ? rates.find((r) => r.id === table.session!.rateId) : undefined
+  const peakRate = rates.reduce((max, r) => Math.max(max, r.pricePerHour), 0)
 
   return (
     <div
@@ -133,7 +132,7 @@ export function TableCard({ table, onStartSession, onEndSession }: TableCardProp
       {/* Card body */}
       <div className="flex flex-1 flex-col px-4 pb-4">
         {isOccupied && table.session ? (
-          <OccupiedContent session={table.session} rate={rate} amountOwed={amountOwed} />
+          <OccupiedContent session={table.session} rate={rate} peakRate={peakRate} />
         ) : (
           <FreeContent />
         )}

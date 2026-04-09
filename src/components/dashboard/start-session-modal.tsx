@@ -5,18 +5,19 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PoolTable, Rate, RATES, isPeakHour, formatCurrency } from "@/lib/pool-types"
+import { PoolTable, Rate, isPeakHour, formatCurrency } from "@/lib/pool-types"
 
 export interface StartSessionModalProps {
   table: PoolTable
+  rates: Rate[]
   onConfirm: (playerName: string, rateId: string) => void
   onCancel: () => void
 }
 
-export function StartSessionModal({ table, onConfirm, onCancel }: StartSessionModalProps) {
+export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSessionModalProps) {
   const currentlyPeak = isPeakHour(new Date())
-  const playerRates = RATES.filter((r) => !r.name.toLowerCase().includes("peak"))
-  const peakRate = RATES.find((r) => r.name.toLowerCase().includes("peak"))
+  const playerRates = rates.filter((r) => !r.isPeakRate)
+  const peakRate = rates.find((r) => r.isPeakRate)
   const defaultRate = currentlyPeak
     ? (peakRate ?? playerRates[0])
     : (playerRates.find((r) => r.isDefault) ?? playerRates[0])
