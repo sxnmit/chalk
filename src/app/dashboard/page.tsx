@@ -5,7 +5,7 @@ import { Header } from "@/components/dashboard/header"
 import { TableCard } from "@/components/dashboard/table-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
 import { EndSessionModal } from "@/components/dashboard/end-session-modal"
-import { PoolTable, TableSession, RATES, initRates, calculateAmountOwed } from "@/lib/pool-types"
+import { PoolTable, initRates } from "@/lib/pool-types"
 import { logoutAction } from "@/app/login/actions"
 import {
   loadDashboardData,
@@ -16,7 +16,8 @@ import { SummaryDrawer } from "@/components/dashboard/summary-drawer"
 
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
-  const [completedSessions, setCompletedSessions] = useState<TableSession[]>([])
+  const [todayRevenue, setTodayRevenue] = useState(0)
+  const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
   const [isOwner, setIsOwner] = useState(false)
@@ -34,10 +35,12 @@ export default function DashboardPage() {
     }, 15000)
 
     loadDashboardData()
-      .then(({ tables, rates, userRole }) => {
+      .then(({ tables, rates, userRole, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
         initRates(rates)
         setTables(tables)
         setIsOwner(userRole === "owner")
+        setTodayRevenue(revenue)
+        setTodayCompletedSessionsCount(completed)
       })
       .catch((err) => {
         console.error("Failed to load dashboard:", err)
@@ -50,8 +53,14 @@ export default function DashboardPage() {
   }, [])
 
   const refresh = useCallback(async () => {
-    const { tables: freshTables } = await loadDashboardData()
+    const {
+      tables: freshTables,
+      todayRevenue: revenue,
+      todayCompletedSessionsCount: completed,
+    } = await loadDashboardData()
     setTables(freshTables)
+    setTodayRevenue(revenue)
+    setTodayCompletedSessionsCount(completed)
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -59,11 +68,6 @@ export default function DashboardPage() {
   // ── Derived stats ──────────────────────────────────────────────────────────
 
   const activeTables = tables.filter((t) => t.session).length
-
-  const todayRevenue = completedSessions.reduce((total, session) => {
-    const rate = RATES.find((r) => r.id === session.rateId)
-    return total + calculateAmountOwed(session.startTime, rate, session.endTime)
-  }, 0)
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -95,9 +99,7 @@ export default function DashboardPage() {
 
   const handleConfirmEnd = useCallback(async () => {
     if (!endModalTable?.session) return
-    const completed: TableSession = { ...endModalTable.session, endTime: new Date() }
     await endSessionAction(endModalTable.id)
-    setCompletedSessions((prev) => [...prev, completed])
     await refresh()
     setEndModalTable(null)
   }, [endModalTable, refresh])
@@ -114,7 +116,7 @@ export default function DashboardPage() {
         venueName="Shy Lounge"
         todayRevenue={todayRevenue}
         activeTables={activeTables}
-        completedSessions={completedSessions.length}
+        completedSessions={todayCompletedSessionsCount}
         onLogout={handleLogout}
         isOwner={isOwner}
         onSummary={() => setSummaryOpen(true)}

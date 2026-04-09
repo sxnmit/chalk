@@ -13,6 +13,71 @@ export interface TodaySession {
   actualRateCharged: number
 }
 
+/** Same formula as the summary drawer: hours × actual_rate_charged. */
+function sessionAmount(s: TodaySession): number {
+  const hours =
+    (new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()) / (1000 * 60 * 60)
+  return hours * s.actualRateCharged
+}
+
+async function loadTodaySummaryForVenue(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  profile: { venue_id: string }
+): Promise<{ sessions: TodaySession[]; totalRevenue: number }> {
+  const { data: venue, error: venueError } = await supabase
+    .from("venues")
+    .select("timezone")
+    .eq("id", profile.venue_id)
+    .single()
+  if (venueError) throw venueError
+
+  const { gte, lt } = todayBoundsUTC(venue.timezone)
+
+  const { data: venueTables, error: tablesError } = await supabase
+    .from("tables")
+    .select("id")
+    .eq("venue_id", profile.venue_id)
+  if (tablesError) throw tablesError
+
+  const tableIds = (venueTables ?? []).map((t) => t.id)
+  if (tableIds.length === 0) return { sessions: [], totalRevenue: 0 }
+
+  const { data: rows, error: sessionsError } = await supabase
+    .from("sessions")
+    .select(`
+      id,
+      started_at,
+      ended_at,
+      actual_rate_charged,
+      player_name,
+      tables (name),
+      rates (label)
+    `)
+    .in("table_id", tableIds)
+    .not("ended_at", "is", null)
+    .gte("started_at", gte)
+    .lt("started_at", lt)
+    .order("ended_at", { ascending: false })
+  if (sessionsError) throw sessionsError
+
+  const sessions: TodaySession[] = (rows ?? []).map((s) => {
+    const tables = s.tables as unknown as { name: string } | null
+    const rates = s.rates as unknown as { label: string } | null
+    return {
+      id: s.id,
+      tableName: tables?.name ?? "Unknown",
+      playerName: s.player_name ?? undefined,
+      rateLabel: rates?.label ?? "Unknown",
+      startedAt: s.started_at,
+      endedAt: s.ended_at,
+      actualRateCharged: Number(s.actual_rate_charged),
+    }
+  })
+
+  const totalRevenue = sessions.reduce((sum, s) => sum + sessionAmount(s), 0)
+  return { sessions, totalRevenue }
+}
+
 // Returns the UTC start/end of the current "business day" for the venue.
 // Business day is anchored to 3:00 AM → 3:00 AM local time (bars often close after midnight).
 function todayBoundsUTC(timezone: string): { gte: string; lt: string } {
@@ -86,6 +151,8 @@ export async function loadDashboardData(): Promise<{
   tables: PoolTable[]
   rates: Rate[]
   userRole: string
+  todayRevenue: number
+  todayCompletedSessionsCount: number
 }> {
   const supabase = await createClient()
 
@@ -99,6 +166,7 @@ export async function loadDashboardData(): Promise<{
     { data: tables, error: tablesError },
     { data: sessions, error: sessionsError },
     { data: dbRates, error: ratesError },
+    todaySummary,
   ] = await Promise.all([
     supabase
       .from("tables")
@@ -115,6 +183,7 @@ export async function loadDashboardData(): Promise<{
       .select("id, label, hourly_rate, is_default")
       .eq("venue_id", venueId)
       .order("hourly_rate"),
+    loadTodaySummaryForVenue(supabase, profile),
   ])
 
   if (tablesError) throw tablesError
@@ -150,7 +219,13 @@ export async function loadDashboardData(): Promise<{
     }
   })
 
-  return { tables: poolTables, rates, userRole: profile.role }
+  return {
+    tables: poolTables,
+    rates,
+    userRole: profile.role,
+    todayRevenue: todaySummary.totalRevenue,
+    todayCompletedSessionsCount: todaySummary.sessions.length,
+  }
 }
 
 export async function loadTodaySessions(): Promise<TodaySession[]> {
@@ -160,58 +235,8 @@ export async function loadTodaySessions(): Promise<TodaySession[]> {
   if (!user) throw new Error("Not authenticated")
 
   const profile = await getUserProfile(supabase, user.id)
-
-  // Get venue timezone
-  const { data: venue, error: venueError } = await supabase
-    .from("venues")
-    .select("timezone")
-    .eq("id", profile.venue_id)
-    .single()
-  if (venueError) throw venueError
-
-  const { gte, lt } = todayBoundsUTC(venue.timezone)
-
-  // Get all table IDs for the venue
-  const { data: venueTables, error: tablesError } = await supabase
-    .from("tables")
-    .select("id")
-    .eq("venue_id", profile.venue_id)
-  if (tablesError) throw tablesError
-
-  const tableIds = (venueTables ?? []).map((t) => t.id)
-  if (tableIds.length === 0) return []
-
-  const { data: sessions, error: sessionsError } = await supabase
-    .from("sessions")
-    .select(`
-      id,
-      started_at,
-      ended_at,
-      actual_rate_charged,
-      player_name,
-      tables (name),
-      rates (label)
-    `)
-    .in("table_id", tableIds)
-    .not("ended_at", "is", null)
-    .gte("started_at", gte)
-    .lt("started_at", lt)
-    .order("ended_at", { ascending: false })
-  if (sessionsError) throw sessionsError
-
-  return (sessions ?? []).map((s) => {
-    const tables = s.tables as unknown as { name: string } | null
-    const rates = s.rates as unknown as { label: string } | null
-    return {
-      id: s.id,
-      tableName: tables?.name ?? "Unknown",
-      playerName: s.player_name ?? undefined,
-      rateLabel: rates?.label ?? "Unknown",
-      startedAt: s.started_at,
-      endedAt: s.ended_at,
-      actualRateCharged: Number(s.actual_rate_charged),
-    }
-  })
+  const { sessions } = await loadTodaySummaryForVenue(supabase, profile)
+  return sessions
 }
 
 export async function startSessionAction(
