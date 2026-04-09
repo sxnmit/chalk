@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { LightWavesBackground } from "@/components/ui/light-waves"
+import { LightWavesBackground } from "@/components/login/light-waves"
 import { LoginForm } from "@/app/login/functions"
 
 const CHALK_COLORS = ["#2a7db5", "#1e6a9e", "#3a8dc5", "#1a5a8a", "#0a4a7a"]
