@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { Header } from "@/components/dashboard/header"
+import { SidebarContent } from "@/components/dashboard/sidebar"
 import { TableCard } from "@/components/dashboard/table-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
 import { EndSessionModal } from "@/components/dashboard/end-session-modal"
@@ -12,7 +13,8 @@ import {
   startSessionAction,
   endSessionAction,
 } from "@/app/dashboard/actions"
-import { SummaryDrawer } from "@/components/dashboard/summary-drawer"
+
+const VENUE_NAME = "Shy Lounge"
 
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
@@ -21,7 +23,7 @@ export default function DashboardPage() {
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
   const [isOwner, setIsOwner] = useState(false)
-  const [summaryOpen, setSummaryOpen] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -111,36 +113,70 @@ export default function DashboardPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        venueName="Shy Lounge"
-        todayRevenue={todayRevenue}
-        activeTables={activeTables}
-        completedSessions={todayCompletedSessionsCount}
-        onLogout={handleLogout}
-        isOwner={isOwner}
-        onSummary={() => setSummaryOpen(true)}
-      />
+    <div className="flex min-h-screen bg-background">
 
-      <main className="w-full px-4 pb-8 pt-36 sm:px-6 xl:px-8 xl:pt-48">
-        {loading ? (
-          <p className="text-center text-sm text-muted-foreground">Loading tables…</p>
-        ) : error ? (
-          <p className="text-center text-sm text-destructive">{error}</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tables.map((table) => (
-              <TableCard
-                key={table.id}
-                table={table}
-                onStartSession={handleStartSession}
-                onEndSession={handleEndSession}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+      {/* ── Desktop sidebar ─────────────────────────────────────────────────── */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col lg:flex">
+        <SidebarContent
+          venueName={VENUE_NAME}
+          isOwner={isOwner}
+          onLogout={handleLogout}
+        />
+      </aside>
 
+      {/* ── Mobile sidebar overlay ────────────────────────────────────────── */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Mobile sidebar panel ──────────────────────────────────────────── */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col lg:hidden transition-transform duration-300 ${
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <SidebarContent
+          venueName={VENUE_NAME}
+          isOwner={isOwner}
+          onLogout={handleLogout}
+          onClose={() => setMobileSidebarOpen(false)}
+        />
+      </div>
+
+      {/* ── Main content area ─────────────────────────────────────────────── */}
+      <div className="flex flex-1 flex-col lg:ml-56">
+        <Header
+          venueName={VENUE_NAME}
+          todayRevenue={todayRevenue}
+          activeTables={activeTables}
+          completedSessions={todayCompletedSessionsCount}
+          onOpenSidebar={() => setMobileSidebarOpen(true)}
+        />
+
+        <main className="flex-1 px-4 pb-8 pt-6 sm:px-6 xl:px-8">
+          {loading ? (
+            <p className="text-center text-sm text-muted-foreground">Loading tables…</p>
+          ) : error ? (
+            <p className="text-center text-sm text-destructive">{error}</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {tables.map((table) => (
+                <TableCard
+                  key={table.id}
+                  table={table}
+                  onStartSession={handleStartSession}
+                  onEndSession={handleEndSession}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* ── Modals ────────────────────────────────────────────────────────── */}
       {startModalTable && (
         <StartSessionModal
           table={startModalTable}
@@ -156,8 +192,6 @@ export default function DashboardPage() {
           onCancel={() => setEndModalTable(null)}
         />
       )}
-
-      <SummaryDrawer open={summaryOpen} onClose={() => setSummaryOpen(false)} />
     </div>
   )
 }
