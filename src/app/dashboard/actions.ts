@@ -1,22 +1,65 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
-import { Rate, PoolTable, TableSession, sessionAmount } from "@/lib/pool-types"
+import { Rate, PoolTable, TableSession } from "@/lib/pool-types"
 
-export interface TodaySession {
-  id: string
-  tableName: string
-  playerName?: string
-  rateLabel: string
-  startedAt: string
-  endedAt: string
-  actualRateCharged: number
+// ── Today bounds helper ────────────────────────────────────────────────────────
+// Returns the UTC start/end of the current business day (3am→3am local).
+
+function todayBoundsUTC(timezone: string): { gte: string; lt: string } {
+  const now = new Date()
+  const dayMs = 24 * 60 * 60 * 1000
+  const cutoffHour = 3
+
+  const dateStringInTz = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d)
+
+  const hourInTz = (d: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "2-digit",
+      hour12: false,
+    }).formatToParts(d)
+    return parseInt(parts.find((p) => p.type === "hour")?.value ?? "00", 10)
+  }
+
+  const businessDate =
+    hourInTz(now) < cutoffHour
+      ? dateStringInTz(new Date(now.getTime() - dayMs))
+      : dateStringInTz(now)
+
+  const partsAt = (d: Date, tz: string) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(d)
+      .reduce<Record<string, number>>((acc, { type, value }) => {
+        if (type !== "literal") acc[type] = parseInt(value, 10)
+        return acc
+      }, {})
+
+  const asUTC = (p: Record<string, number>) =>
+    Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
+
+  const boundaryBase = new Date(`${businessDate}T0${cutoffHour}:00:00Z`)
+  const offsetMs = asUTC(partsAt(boundaryBase, "UTC")) - asUTC(partsAt(boundaryBase, timezone))
+  const startMs = boundaryBase.getTime() + offsetMs
+
+  return {
+    gte: new Date(startMs).toISOString(),
+    lt: new Date(startMs + dayMs).toISOString(),
+  }
 }
+
+// ── Today summary (for dashboard header chips) ─────────────────────────────────
 
 async function loadTodaySummaryForVenue(
   supabase: Awaited<ReturnType<typeof createClient>>,
   profile: { venue_id: string }
-): Promise<{ sessions: TodaySession[]; totalRevenue: number }> {
+): Promise<{ totalRevenue: number; sessionCount: number }> {
   const { data: venue, error: venueError } = await supabase
     .from("venues")
     .select("timezone")
@@ -33,119 +76,48 @@ async function loadTodaySummaryForVenue(
   if (tablesError) throw tablesError
 
   const tableIds = (venueTables ?? []).map((t) => t.id)
-  if (tableIds.length === 0) return { sessions: [], totalRevenue: 0 }
+  if (tableIds.length === 0) return { totalRevenue: 0, sessionCount: 0 }
 
   const { data: rows, error: sessionsError } = await supabase
     .from("sessions")
-    .select(`
-      id,
-      started_at,
-      ended_at,
-      actual_rate_charged,
-      player_name,
-      tables (name),
-      rates (label)
-    `)
+    .select("started_at, ended_at, actual_rate_charged")
     .in("table_id", tableIds)
     .not("ended_at", "is", null)
     .gte("started_at", gte)
     .lt("started_at", lt)
-    .order("ended_at", { ascending: false })
   if (sessionsError) throw sessionsError
 
-  const sessions: TodaySession[] = (rows ?? []).map((s) => {
-    const tables = s.tables as unknown as { name: string } | null
-    const rates = s.rates as unknown as { label: string } | null
-    return {
-      id: s.id,
-      tableName: tables?.name ?? "Unknown",
-      playerName: s.player_name ?? undefined,
-      rateLabel: rates?.label ?? "Unknown",
-      startedAt: s.started_at,
-      endedAt: s.ended_at,
-      actualRateCharged: Number(s.actual_rate_charged),
-    }
-  })
-
-  const totalRevenue = sessions.reduce((sum, s) => sum + sessionAmount(s), 0)
-  return { sessions, totalRevenue }
-}
-
-// Returns the UTC start/end of the current "business day" for the venue.
-// Business day is anchored to 3:00 AM → 3:00 AM local time (bars often close after midnight).
-function todayBoundsUTC(timezone: string): { gte: string; lt: string } {
-  const now = new Date()
-  const dayMs = 24 * 60 * 60 * 1000
-  const cutoffHour = 3
-
-  const dateStringInTz = (d: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d) // "YYYY-MM-DD"
-
-  const hourInTz = (d: Date) => {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "2-digit",
-      hour12: false,
-    }).formatToParts(d)
-    const hour = parts.find((p) => p.type === "hour")?.value ?? "00"
-    return parseInt(hour, 10)
+  let totalRevenue = 0
+  for (const s of rows ?? []) {
+    const hours =
+      (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / (1000 * 60 * 60)
+    totalRevenue += hours * Number(s.actual_rate_charged)
   }
 
-  // If it's before 3am local time, we treat it as part of the previous business day.
-  const businessDate =
-    hourInTz(now) < cutoffHour ? dateStringInTz(new Date(now.getTime() - dayMs)) : dateStringInTz(now)
-
-  // Compute the UTC offset at the boundary instant by comparing raw component values.
-  const partsAt = (d: Date, tz: string) =>
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    })
-      .formatToParts(d)
-      .reduce<Record<string, number>>((acc, { type, value }) => {
-        if (type !== "literal") acc[type] = parseInt(value, 10)
-        return acc
-      }, {})
-
-  const asUTC = (p: Record<string, number>) =>
-    Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
-
-  // 3am local time expressed as UTC using the offset at that boundary instant.
-  const boundaryBase = new Date(`${businessDate}T0${cutoffHour}:00:00Z`)
-  const offsetMs = asUTC(partsAt(boundaryBase, "UTC")) - asUTC(partsAt(boundaryBase, timezone))
-  const startMs = boundaryBase.getTime() + offsetMs
-
-  return {
-    gte: new Date(startMs).toISOString(),
-    lt: new Date(startMs + dayMs).toISOString(),
-  }
+  return { totalRevenue, sessionCount: (rows ?? []).length }
 }
 
 // Reads venue_id, role, and user id directly from the JWT — no DB round-trip.
-// Decodes the access token payload directly rather than relying on session.user.app_metadata,
-// which the Supabase SSR client may not fully populate from custom hook claims.
 // Requires the custom_access_token_hook Postgres function to be registered in Supabase.
 async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("Not authenticated")
 
   const payload = JSON.parse(
-    Buffer.from(session.access_token.split('.')[1], 'base64url').toString()
+    Buffer.from(session.access_token.split(".")[1], "base64url").toString()
   )
 
   const venueId = payload.app_metadata?.venue_id as string | undefined
   const role = payload.app_metadata?.role as string | undefined
 
-  if (!venueId || !role) throw new Error("Missing claims in token — ensure custom_access_token_hook is registered in Supabase")
+  if (!venueId || !role) {
+    throw new Error("Missing claims in token — ensure custom_access_token_hook is registered in Supabase")
+  }
 
   return { venueId, role, userId: session.user.id }
 }
+
+// ── Public actions ─────────────────────────────────────────────────────────────
 
 export async function loadDashboardData(): Promise<{
   tables: PoolTable[]
@@ -167,16 +139,20 @@ export async function loadDashboardData(): Promise<{
 
   const venueTableIds = (tables ?? []).map((t) => t.id)
 
+  const sessionsQuery = venueTableIds.length > 0
+    ? supabase
+        .from("sessions")
+        .select("id, table_id, rate_id, started_at, player_name")
+        .in("table_id", venueTableIds)
+        .is("ended_at", null)
+    : Promise.resolve({ data: [], error: null })
+
   const [
     { data: sessions, error: sessionsError },
     { data: dbRates, error: ratesError },
     todaySummary,
   ] = await Promise.all([
-    supabase
-      .from("sessions")
-      .select("id, table_id, rate_id, started_at, player_name")
-      .in("table_id", venueTableIds)
-      .is("ended_at", null),
+    sessionsQuery,
     supabase
       .from("rates")
       .select("id, label, hourly_rate, is_default")
@@ -193,7 +169,6 @@ export async function loadDashboardData(): Promise<{
     name: r.label,
     pricePerHour: Number(r.hourly_rate),
     isDefault: r.is_default,
-    isPeakRate: r.label.toLowerCase().includes("peak"),
   }))
 
   const sessionByTableId = new Map((sessions ?? []).map((s) => [s.table_id, s]))
@@ -223,15 +198,8 @@ export async function loadDashboardData(): Promise<{
     rates,
     userRole: role,
     todayRevenue: todaySummary.totalRevenue,
-    todayCompletedSessionsCount: todaySummary.sessions.length,
+    todayCompletedSessionsCount: todaySummary.sessionCount,
   }
-}
-
-export async function loadTodaySessions(): Promise<TodaySession[]> {
-  const supabase = await createClient()
-  const { venueId } = await getProfileFromToken(supabase)
-  const { sessions } = await loadTodaySummaryForVenue(supabase, { venue_id: venueId })
-  return sessions
 }
 
 export async function startSessionAction(
@@ -242,7 +210,7 @@ export async function startSessionAction(
   const supabase = await createClient()
   const { venueId, userId } = await getProfileFromToken(supabase)
 
-  // Validate table and rate both belong to this venue, and snapshot the rate price
+  // Validate table and rate both belong to this venue before mutating anything.
   const [
     { data: table, error: tableCheckError },
     { data: rate, error: rateError },
@@ -254,21 +222,25 @@ export async function startSessionAction(
   if (tableCheckError || !table) throw new Error("Table not found for this venue")
   if (rateError || !rate) throw new Error("Rate not found for this venue")
 
-  const [{ error: insertError }, { error: tableUpdateError }] = await Promise.all([
+  const [{ error: insertError }, { error: tableError }] = await Promise.all([
     supabase.from("sessions").insert({
       table_id: tableId,
       rate_id: rateId,
       staff_id: userId,
+      venue_id: venueId,
       started_at: new Date().toISOString(),
       actual_rate_charged: rate.hourly_rate,
       player_name: playerName || null,
-      venue_id: venueId,
     }),
-    supabase.from("tables").update({ status: "occupied" }).eq("id", tableId),
+    supabase
+      .from("tables")
+      .update({ status: "occupied" })
+      .eq("id", tableId)
+      .eq("venue_id", venueId),
   ])
 
   if (insertError) throw insertError
-  if (tableUpdateError) throw tableUpdateError
+  if (tableError) throw tableError
 }
 
 export async function endSessionAction(tableId: string): Promise<void> {
@@ -289,8 +261,13 @@ export async function endSessionAction(tableId: string): Promise<void> {
       .from("sessions")
       .update({ ended_at: new Date().toISOString() })
       .eq("table_id", tableId)
+      .eq("venue_id", venueId)
       .is("ended_at", null),
-    supabase.from("tables").update({ status: "free" }).eq("id", tableId),
+    supabase
+      .from("tables")
+      .update({ status: "free" })
+      .eq("id", tableId)
+      .eq("venue_id", venueId),
   ])
 
   if (sessionError) throw sessionError
