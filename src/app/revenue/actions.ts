@@ -76,7 +76,7 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
         .find((p) => p.type === "hour")?.value ?? "0"
     hourCounts[parseInt(hourStr, 10)]++
 
-    const label = (s.rates as { label: string } | null)?.label ?? "Other"
+    const label = (s.rates as unknown as { label: string } | null)?.label ?? "Other"
     const prev = tierMap.get(label) ?? { sessionCount: 0, revenue: 0 }
     tierMap.set(label, { sessionCount: prev.sessionCount + 1, revenue: prev.revenue + revenue })
   }
