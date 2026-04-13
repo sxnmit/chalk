@@ -205,11 +205,14 @@ export async function startSessionAction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const { data: rate, error: rateError } = await supabase
-    .from("rates")
-    .select("hourly_rate")
-    .eq("id", rateId)
-    .single()
+  const [
+    { data: profile, error: profileError },
+    { data: rate, error: rateError },
+  ] = await Promise.all([
+    supabase.from("users").select("venue_id").eq("id", user.id).single(),
+    supabase.from("rates").select("hourly_rate").eq("id", rateId).single(),
+  ])
+  if (profileError) throw profileError
   if (rateError) throw rateError
 
   const [{ error: insertError }, { error: tableError }] = await Promise.all([
@@ -217,6 +220,7 @@ export async function startSessionAction(
       table_id: tableId,
       rate_id: rateId,
       staff_id: user.id,
+      venue_id: profile.venue_id,
       started_at: new Date().toISOString(),
       actual_rate_charged: rate.hourly_rate,
       player_name: playerName || null,
