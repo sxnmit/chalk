@@ -37,16 +37,16 @@ export function SidebarContent({
 
   const itemClass = (active: boolean) =>
     `flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${active
-      ? "bg-[#2a7db5] text-white"
+      ? "bg-primary text-primary-foreground"
       : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
     }`
 
   return (
-    <div className="flex h-full flex-col" style={{ backgroundColor: "#111111" }}>
+    <div className="flex h-full flex-col bg-sidebar">
       {/* Logo + wordmark */}
       <div className="flex items-center gap-3 border-b border-white/5 px-5 py-5">
         <Image
-          src="/logo.png"
+          src="/logo.svg"
           alt="Chalk logo"
           width={40}
           height={40}

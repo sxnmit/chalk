@@ -1,11 +1,8 @@
-import type { TodaySession } from "@/app/dashboard/actions"
-
 export interface Rate {
   id: string
   name: string
   pricePerHour: number
   isDefault: boolean
-  isPeakRate: boolean
 }
 
 export interface TableSession {
@@ -24,6 +21,22 @@ export interface PoolTable {
   session?: TableSession
 }
 
+// Populated at runtime from the database via initRates().
+// Starts empty — do not add hardcoded values here.
+export const RATES: Rate[] = []
+
+// Cached after initRates() — avoids re-scanning RATES on every billing tick.
+let _cachedPeakRate: number | null = null
+
+export function initRates(rates: Rate[]) {
+  RATES.splice(0, RATES.length, ...rates)
+  _cachedPeakRate = null
+}
+
+export function getDefaultRate(): Rate {
+  return RATES.find((r) => r.isDefault) ?? RATES[0]
+}
+
 // Peak hours: Fri–Sat 8 pm – 3 am (anchored to local time)
 export function isPeakHour(date: Date): boolean {
   const day = date.getDay()  // 0=Sun … 5=Fri, 6=Sat
@@ -36,14 +49,21 @@ export function isPeakHour(date: Date): boolean {
   )
 }
 
+function getPeakRate(): number {
+  if (_cachedPeakRate !== null) return _cachedPeakRate
+  if (RATES.length === 0) return 25
+  _cachedPeakRate = Math.max(...RATES.map((r) => r.pricePerHour))
+  return _cachedPeakRate
+}
+
 export function calculateAmountOwed(
   startTime: Date,
   rate: Rate | undefined,
-  peakRate: number,
   endTime?: Date
 ): number {
   if (!rate) return 0
   const end = endTime ?? new Date()
+  const peakRate = getPeakRate()
 
   // Flat billing: non-league and any rate already at/above peak price
   if (rate.pricePerHour >= peakRate) {
@@ -70,12 +90,6 @@ export function calculateAmountOwed(
   return Math.max(0, total)
 }
 
-export function sessionAmount(s: TodaySession): number {
-  const hours =
-    (new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()) / (1000 * 60 * 60)
-  return hours * s.actualRateCharged
-}
-
 export function formatDuration(startTime: Date, endTime?: Date): string {
   const end = endTime ?? new Date()
   const totalSeconds = Math.floor((end.getTime() - startTime.getTime()) / 1000)
@@ -93,10 +107,13 @@ export function formatTime(date: Date): string {
   })
 }
 
+// Created once — Intl constructors are expensive to instantiate on every call.
+const USD_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+})
+
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(amount)
+  return USD_FORMATTER.format(amount)
 }
