@@ -97,19 +97,24 @@ async function loadTodaySummaryForVenue(
   return { totalRevenue, sessionCount: (rows ?? []).length }
 }
 
-// ── getUserProfile ─────────────────────────────────────────────────────────────
+// Reads venue_id, role, and user id directly from the JWT — no DB round-trip.
+// Decodes the access token payload directly rather than relying on session.user.app_metadata,
+// which the Supabase SSR client may not fully populate from custom hook claims.
+// Requires the custom_access_token_hook Postgres function to be registered in Supabase.
+async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error("Not authenticated")
 
-async function getUserProfile(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-): Promise<{ venue_id: string; role: string }> {
-  const { data, error } = await supabase
-    .from("users")
-    .select("venue_id, role")
-    .eq("id", userId)
-    .single()
-  if (error) throw error
-  return data
+  const payload = JSON.parse(
+    Buffer.from(session.access_token.split('.')[1], 'base64url').toString()
+  )
+
+  const venueId = payload.app_metadata?.venue_id as string | undefined
+  const role = payload.app_metadata?.role as string | undefined
+
+  if (!venueId || !role) throw new Error("Missing claims in token — ensure custom_access_token_hook is registered in Supabase")
+
+  return { venueId, role, userId: session.user.id }
 }
 
 // ── Public actions ─────────────────────────────────────────────────────────────
@@ -122,38 +127,36 @@ export async function loadDashboardData(): Promise<{
   todayCompletedSessionsCount: number
 }> {
   const supabase = await createClient()
+  const { venueId, role } = await getProfileFromToken(supabase)
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  const { data: tables, error: tablesError } = await supabase
+    .from("tables")
+    .select("id, name, display_order")
+    .eq("venue_id", venueId)
+    .neq("status", "inactive")
+    .order("display_order")
+  if (tablesError) throw tablesError
 
-  const profile = await getUserProfile(supabase, user.id)
-  const venueId = profile.venue_id
+  const venueTableIds = (tables ?? []).map((t) => t.id)
 
   const [
-    { data: tables, error: tablesError },
     { data: sessions, error: sessionsError },
     { data: dbRates, error: ratesError },
     todaySummary,
   ] = await Promise.all([
     supabase
-      .from("tables")
-      .select("id, name, display_order")
-      .eq("venue_id", venueId)
-      .neq("status", "inactive")
-      .order("display_order"),
-    supabase
       .from("sessions")
       .select("id, table_id, rate_id, started_at, player_name")
+      .in("table_id", venueTableIds)
       .is("ended_at", null),
     supabase
       .from("rates")
       .select("id, label, hourly_rate, is_default")
       .eq("venue_id", venueId)
       .order("hourly_rate"),
-    loadTodaySummaryForVenue(supabase, profile),
+    loadTodaySummaryForVenue(supabase, { venue_id: venueId }),
   ])
 
-  if (tablesError) throw tablesError
   if (sessionsError) throw sessionsError
   if (ratesError) throw ratesError
 
@@ -162,6 +165,7 @@ export async function loadDashboardData(): Promise<{
     name: r.label,
     pricePerHour: Number(r.hourly_rate),
     isDefault: r.is_default,
+    isPeakRate: r.label.toLowerCase().includes("peak"),
   }))
 
   const sessionByTableId = new Map((sessions ?? []).map((s) => [s.table_id, s]))
@@ -189,7 +193,7 @@ export async function loadDashboardData(): Promise<{
   return {
     tables: poolTables,
     rates,
-    userRole: profile.role,
+    userRole: role,
     todayRevenue: todaySummary.totalRevenue,
     todayCompletedSessionsCount: todaySummary.sessionCount,
   }
@@ -201,39 +205,49 @@ export async function startSessionAction(
   playerName?: string
 ): Promise<void> {
   const supabase = await createClient()
+  const { venueId, userId } = await getProfileFromToken(supabase)
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
-
+  // Validate table and rate both belong to this venue, and snapshot the rate price
   const [
-    { data: profile, error: profileError },
+    { data: table, error: tableCheckError },
     { data: rate, error: rateError },
   ] = await Promise.all([
-    supabase.from("users").select("venue_id").eq("id", user.id).single(),
-    supabase.from("rates").select("hourly_rate").eq("id", rateId).single(),
+    supabase.from("tables").select("id").eq("id", tableId).eq("venue_id", venueId).single(),
+    supabase.from("rates").select("hourly_rate").eq("id", rateId).eq("venue_id", venueId).single(),
   ])
-  if (profileError) throw profileError
-  if (rateError) throw rateError
 
-  const [{ error: insertError }, { error: tableError }] = await Promise.all([
+  if (tableCheckError || !table) throw new Error("Table not found for this venue")
+  if (rateError || !rate) throw new Error("Rate not found for this venue")
+
+  const [{ error: insertError }, { error: tableUpdateError }] = await Promise.all([
     supabase.from("sessions").insert({
       table_id: tableId,
       rate_id: rateId,
-      staff_id: user.id,
-      venue_id: profile.venue_id,
+      staff_id: userId,
       started_at: new Date().toISOString(),
       actual_rate_charged: rate.hourly_rate,
       player_name: playerName || null,
+      venue_id: venueId,
     }),
     supabase.from("tables").update({ status: "occupied" }).eq("id", tableId),
   ])
 
   if (insertError) throw insertError
-  if (tableError) throw tableError
+  if (tableUpdateError) throw tableUpdateError
 }
 
 export async function endSessionAction(tableId: string): Promise<void> {
   const supabase = await createClient()
+  const { venueId } = await getProfileFromToken(supabase)
+
+  const { data: table, error: tableCheckError } = await supabase
+    .from("tables")
+    .select("id")
+    .eq("id", tableId)
+    .eq("venue_id", venueId)
+    .single()
+
+  if (tableCheckError || !table) throw new Error("Table not found for this venue")
 
   const [{ error: sessionError }, { error: tableError }] = await Promise.all([
     supabase

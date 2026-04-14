@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Header } from "@/components/dashboard/header"
 import { SidebarContent } from "@/components/dashboard/sidebar"
 import { TableCard } from "@/components/dashboard/table-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
 import { EndSessionModal } from "@/components/dashboard/end-session-modal"
-import { PoolTable, initRates } from "@/lib/pool-types"
+import { PoolTable, Rate } from "@/lib/pool-types"
 import { logoutAction } from "@/app/login/actions"
 import {
   loadDashboardData,
@@ -18,6 +18,7 @@ const VENUE_NAME = "Shy Lounge"
 
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
+  const [rates, setRates] = useState<Rate[]>([])
   const [todayRevenue, setTodayRevenue] = useState(0)
   const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
@@ -27,28 +28,41 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Generation counter: if a new load starts while one is in flight, discard the stale result.
+  const loadGenRef = useRef(0)
+
+  const handleLogout = useCallback(async () => {
+    await logoutAction()
+  }, [])
+
   const load = useCallback(() => {
     setLoading(true)
     setError(null)
 
+    const gen = ++loadGenRef.current
+
     const timeout = setTimeout(() => {
+      if (gen !== loadGenRef.current) return
       setLoading(false)
       setError("Request timed out. Check your connection and try again.")
     }, 15000)
 
     loadDashboardData()
       .then(({ tables, rates, userRole, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
-        initRates(rates)
+        if (gen !== loadGenRef.current) return
         setTables(tables)
+        setRates(rates)
         setIsOwner(userRole === "owner")
         setTodayRevenue(revenue)
         setTodayCompletedSessionsCount(completed)
       })
       .catch((err) => {
+        if (gen !== loadGenRef.current) return
         console.error("Failed to load dashboard:", err)
         setError(err?.message ?? "Failed to load tables.")
       })
       .finally(() => {
+        if (gen !== loadGenRef.current) return
         clearTimeout(timeout)
         setLoading(false)
       })
@@ -106,10 +120,6 @@ export default function DashboardPage() {
     setEndModalTable(null)
   }, [endModalTable, refresh])
 
-  const handleLogout = useCallback(() => {
-    logoutAction()
-  }, [])
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -123,7 +133,6 @@ export default function DashboardPage() {
           onLogout={handleLogout}
         />
       </aside>
-
       {/* ── Mobile sidebar overlay ────────────────────────────────────────── */}
       {mobileSidebarOpen && (
         <div
@@ -134,9 +143,8 @@ export default function DashboardPage() {
 
       {/* ── Mobile sidebar panel ──────────────────────────────────────────── */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col lg:hidden transition-transform duration-300 ${
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col lg:hidden transition-transform duration-300 ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <SidebarContent
           venueName={VENUE_NAME}
@@ -180,6 +188,7 @@ export default function DashboardPage() {
       {startModalTable && (
         <StartSessionModal
           table={startModalTable}
+          rates={rates}
           onConfirm={handleConfirmStart}
           onCancel={() => setStartModalTable(null)}
         />
@@ -188,6 +197,7 @@ export default function DashboardPage() {
       {endModalTable && (
         <EndSessionModal
           table={endModalTable}
+          rates={rates}
           onConfirm={handleConfirmEnd}
           onCancel={() => setEndModalTable(null)}
         />

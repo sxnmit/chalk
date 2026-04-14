@@ -4,7 +4,7 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   PoolTable,
-  RATES,
+  Rate,
   calculateAmountOwed,
   formatDuration,
   formatTime,
@@ -13,17 +13,19 @@ import {
 
 export interface EndSessionModalProps {
   table: PoolTable
+  rates: Rate[]
   onConfirm: () => void
   onCancel: () => void
 }
 
-export function EndSessionModal({ table, onConfirm, onCancel }: EndSessionModalProps) {
+export function EndSessionModal({ table, rates, onConfirm, onCancel }: EndSessionModalProps) {
   const { session } = table
   if (!session) return null
 
-  const rate = RATES.find((r) => r.id === session.rateId)
+  const rate = rates.find((r) => r.id === session.rateId)
+  const peakRate = rates.reduce((max, r) => Math.max(max, r.pricePerHour), 0)
   const endTime = new Date()
-  const amountOwed = calculateAmountOwed(session.startTime, rate, endTime)
+  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate, endTime)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

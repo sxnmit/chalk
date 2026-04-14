@@ -3,6 +3,7 @@ export interface Rate {
   name: string
   pricePerHour: number
   isDefault: boolean
+  isPeakRate: boolean
 }
 
 export interface TableSession {
@@ -21,18 +22,6 @@ export interface PoolTable {
   session?: TableSession
 }
 
-// Populated at runtime from the database via initRates().
-// Starts empty — do not add hardcoded values here.
-export const RATES: Rate[] = []
-
-export function initRates(rates: Rate[]) {
-  RATES.splice(0, RATES.length, ...rates)
-}
-
-export function getDefaultRate(): Rate {
-  return RATES.find((r) => r.isDefault) ?? RATES[0]
-}
-
 // Peak hours: Fri–Sat 8 pm – 3 am (anchored to local time)
 export function isPeakHour(date: Date): boolean {
   const day = date.getDay()  // 0=Sun … 5=Fri, 6=Sat
@@ -45,19 +34,14 @@ export function isPeakHour(date: Date): boolean {
   )
 }
 
-function getPeakRate(): number {
-  if (RATES.length === 0) return 25
-  return Math.max(...RATES.map((r) => r.pricePerHour))
-}
-
 export function calculateAmountOwed(
   startTime: Date,
   rate: Rate | undefined,
+  peakRate: number,
   endTime?: Date
 ): number {
   if (!rate) return 0
   const end = endTime ?? new Date()
-  const peakRate = getPeakRate()
 
   // Flat billing: non-league and any rate already at/above peak price
   if (rate.pricePerHour >= peakRate) {
