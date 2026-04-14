@@ -175,6 +175,7 @@ export default function DashboardPage() {
                 <TableCard
                   key={table.id}
                   table={table}
+                  rates={rates}
                   onStartSession={handleStartSession}
                   onEndSession={handleEndSession}
                 />
