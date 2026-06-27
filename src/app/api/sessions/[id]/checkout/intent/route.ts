@@ -37,6 +37,7 @@ export async function POST(
 
     const itemsTotalCents = (items ?? []).reduce((sum, i) => sum + i.quantity * i.price_at_time_cents, 0)
     const grandTotalCents = tableTotalCents + itemsTotalCents
+    const stripeAmountCents = Math.max(grandTotalCents, 50)
 
     // Check for existing pending payment
     const { data: existingPayment } = await supabase
@@ -47,11 +48,34 @@ export async function POST(
       .maybeSingle()
 
     if (existingPayment?.stripe_payment_intent_id && existingPayment.status === "pending") {
-      // Try to reuse existing PaymentIntent
       try {
         const pi = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id)
         if (pi.status === "requires_payment_method" || pi.status === "requires_confirmation") {
-          return NextResponse.json({ client_secret: pi.client_secret, payment_id: existingPayment.id })
+          const updatedIntent = await stripe.paymentIntents.update(pi.id, {
+            amount: stripeAmountCents,
+            metadata: {
+              session_id: sessionId,
+              venue_id: venueId,
+              expected_grand_total_cents: String(grandTotalCents),
+            },
+          })
+
+          const { error: updateErr } = await supabase
+            .from("payments")
+            .update({
+              method: "card",
+              table_total_cents: tableTotalCents,
+              items_total_cents: itemsTotalCents,
+              grand_total_cents: grandTotalCents,
+              stripe_payment_intent_id: updatedIntent.id,
+              status: "pending",
+            })
+            .eq("id", existingPayment.id)
+            .eq("venue_id", venueId)
+
+          if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+
+          return NextResponse.json({ client_secret: updatedIntent.client_secret, payment_id: existingPayment.id })
         }
       } catch {}
     }
@@ -59,12 +83,16 @@ export async function POST(
     // Create Stripe PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create(
       {
-        amount: Math.max(grandTotalCents, 50), // Stripe minimum 50 cents
+        amount: stripeAmountCents,
         currency: "cad",
-        metadata: { session_id: sessionId, venue_id: venueId },
+        metadata: {
+          session_id: sessionId,
+          venue_id: venueId,
+          expected_grand_total_cents: String(grandTotalCents),
+        },
         automatic_payment_methods: { enabled: true },
       },
-      { idempotencyKey: `session-${sessionId}-checkout` }
+      { idempotencyKey: `session-${sessionId}-checkout-${stripeAmountCents}` }
     )
 
     // Upsert payment row

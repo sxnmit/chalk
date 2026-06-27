@@ -6,7 +6,6 @@ import { Printer, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Receipt, type ReceiptData } from "@/components/ordering/receipt"
-import { createClient } from "@/utils/supabase/client"
 
 export default function ReceiptPage() {
   const params = useParams()
@@ -23,56 +22,9 @@ export default function ReceiptPage() {
     async function load() {
       if (!paymentId) { setLoading(false); return }
       try {
-        const supabase = createClient()
-        const [{ data: payment }, { data: session }] = await Promise.all([
-          supabase.from("payments").select("*").eq("id", paymentId).single(),
-          supabase.from("sessions").select("*, tables(name), venues(name), rates(label)").eq("id", sessionId).single(),
-        ])
-        if (!payment || !session) throw new Error("Not found")
-
-        const { data: orderItems } = await supabase
-          .from("order_items")
-          .select("*, menu_items(name)")
-          .eq("session_id", sessionId)
-
-        let cardLast4: string | null = null
-        if (payment.stripe_payment_intent_id && payment.method === "card") {
-          try {
-            const res = await fetch(`/api/sessions/${sessionId}/receipt-data?pi=${payment.stripe_payment_intent_id}`)
-            if (res.ok) { const d = await res.json(); cardLast4 = d.last4 }
-          } catch {}
-        }
-
-        const startedAt = session.started_at
-        const endedAt = session.ended_at ?? new Date().toISOString()
-        const durationMinutes = Math.round(
-          (new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000
-        )
-        const tables = session.tables as unknown as { name: string } | null
-        const venues = session.venues as unknown as { name: string } | null
-
-        setData({
-          venueName: venues?.name ?? "Venue",
-          receiptNumber: paymentId.slice(-8).toUpperCase(),
-          createdAt: payment.created_at,
-          tableName: tables?.name ?? "Table",
-          startedAt,
-          endedAt,
-          durationMinutes,
-          actualRateCharged: Number(session.actual_rate_charged),
-          orderItems: (orderItems ?? []).map((item) => ({
-            name: (item.menu_items as unknown as { name: string } | null)?.name ?? "Item",
-            quantity: item.quantity,
-            price_at_time_cents: item.price_at_time_cents,
-            line_total_cents: item.quantity * item.price_at_time_cents,
-          })),
-          tableTotalCents: payment.table_total_cents,
-          itemsTotalCents: payment.items_total_cents,
-          taxCents: payment.tax_cents,
-          grandTotalCents: payment.grand_total_cents,
-          method: payment.method as "card" | "cash" | "terminal",
-          cardLast4,
-        })
+        const res = await fetch(`/api/sessions/${sessionId}/receipt?payment_id=${paymentId}`)
+        if (!res.ok) throw new Error("Not found")
+        setData(await res.json())
       } catch {
         // fail silently — show empty state
       } finally {
