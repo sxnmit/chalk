@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import Link from "next/link"
 import { Header } from "@/components/dashboard/header"
 import { SidebarLayout } from "@/components/dashboard/sidebar-layout"
 import { TableCard } from "@/components/dashboard/table-card"
@@ -153,6 +154,30 @@ export default function DashboardPage() {
               </div>
             ) : error ? (
               <p className="text-center text-sm text-destructive">{error}</p>
+            ) : isOwner && (rates.length === 0 || tables.length === 0) ? (
+              <div className="flex flex-col items-center gap-4 py-16 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Get started by setting up your venue
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {rates.length === 0 && (
+                    <Link
+                      href="/admin/rates"
+                      className="rounded-xl border border-border/50 bg-card px-5 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      Add your first rate tier →
+                    </Link>
+                  )}
+                  {tables.length === 0 && (
+                    <Link
+                      href="/admin/tables"
+                      className="rounded-xl border border-border/50 bg-card px-5 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      Add your first table →
+                    </Link>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {tables.map((table, i) => (
