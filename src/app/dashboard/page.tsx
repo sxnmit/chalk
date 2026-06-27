@@ -6,7 +6,7 @@ import { SidebarLayout } from "@/components/dashboard/sidebar-layout"
 import { TableCard } from "@/components/dashboard/table-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
 import { EndSessionModal } from "@/components/dashboard/end-session-modal"
-import { PoolTable, initRates } from "@/lib/pool-types"
+import { PoolTable, Rate } from "@/lib/pool-types"
 import { logoutAction } from "@/app/login/actions"
 import {
   loadDashboardData,
@@ -36,6 +36,7 @@ function TableCardSkeleton() {
 
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
+  const [rates, setRates] = useState<Rate[]>([])
   const [todayRevenue, setTodayRevenue] = useState(0)
   const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
@@ -55,8 +56,8 @@ export default function DashboardPage() {
 
     loadDashboardData()
       .then(({ tables, rates, userRole, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
-        initRates(rates)
         setTables(tables)
+        setRates(rates)
         setIsOwner(userRole === "owner")
         setTodayRevenue(revenue)
         setTodayCompletedSessionsCount(completed)
@@ -162,6 +163,7 @@ export default function DashboardPage() {
                   >
                     <TableCard
                       table={table}
+                      rates={rates}
                       onStartSession={handleStartSession}
                       onEndSession={handleEndSession}
                     />
@@ -175,6 +177,7 @@ export default function DashboardPage() {
           {startModalTable && (
             <StartSessionModal
               table={startModalTable}
+              rates={rates}
               onConfirm={handleConfirmStart}
               onCancel={() => setStartModalTable(null)}
             />
@@ -183,6 +186,7 @@ export default function DashboardPage() {
           {endModalTable && (
             <EndSessionModal
               table={endModalTable}
+              rates={rates}
               onConfirm={handleConfirmEnd}
               onCancel={() => setEndModalTable(null)}
             />

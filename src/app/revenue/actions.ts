@@ -11,24 +11,35 @@ export interface RevenueData {
   tierBreakdown: { label: string; sessionCount: number; revenue: number }[]
 }
 
+// Reads venue_id and role directly from the JWT — no DB round-trip.
+// Requires the custom_access_token_hook Postgres function to be registered in Supabase.
+async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) redirect("/login")
+
+  const payload = JSON.parse(
+    Buffer.from(session.access_token.split(".")[1], "base64url").toString()
+  )
+
+  const venueId = payload.app_metadata?.venue_id as string | undefined
+  const role = payload.app_metadata?.role as string | undefined
+
+  if (!venueId || !role) {
+    throw new Error("Missing claims in token — ensure custom_access_token_hook is registered in Supabase")
+  }
+
+  return { venueId, role }
+}
+
 export async function loadRevenueData(from: string, to: string): Promise<RevenueData> {
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("venue_id, role")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || profile.role !== "owner") redirect("/dashboard")
+  const { venueId, role } = await getProfileFromToken(supabase)
+  if (role !== "owner") redirect("/dashboard")
 
   const { data: venue } = await supabase
     .from("venues")
     .select("timezone")
-    .eq("id", profile.venue_id)
+    .eq("id", venueId)
     .single()
 
   const timezone = venue?.timezone ?? "UTC"
@@ -36,7 +47,7 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
   const { data: tables } = await supabase
     .from("tables")
     .select("id")
-    .eq("venue_id", profile.venue_id)
+    .eq("venue_id", venueId)
 
   const tableIds = (tables ?? []).map((t) => t.id)
   if (tableIds.length === 0) return emptyData()

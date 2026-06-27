@@ -169,6 +169,7 @@ export async function loadDashboardData(): Promise<{
     name: r.label,
     pricePerHour: Number(r.hourly_rate),
     isDefault: r.is_default,
+    isPeakRate: r.label.toLowerCase().includes("peak"),
   }))
 
   const sessionByTableId = new Map((sessions ?? []).map((s) => [s.table_id, s]))
