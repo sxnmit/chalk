@@ -127,13 +127,6 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
         Thanks for racking with Chalk.
       </div>
 
-      <style jsx global>{`
-        @media print {
-          body > *:not(.receipt-print-target) { display: none !important; }
-          .receipt-print-target { display: block !important; }
-          .receipt-root { max-width: 80mm; margin: 0 auto; }
-        }
-      `}</style>
     </div>
   )
 })
