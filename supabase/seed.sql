@@ -1,0 +1,36 @@
+-- Pilot billing setup for Shy Lounge.
+-- Replace placeholders and run manually when Vish's venue has been created in Stripe.
+--
+-- update public.venues
+-- set stripe_customer_id = 'cus_REPLACE_ME',
+--     onboarding_completed_at = coalesce(onboarding_completed_at, now())
+-- where name = 'Shy Lounge';
+--
+-- insert into public.subscriptions (
+--   venue_id,
+--   stripe_customer_id,
+--   stripe_subscription_id,
+--   stripe_price_id,
+--   status,
+--   trial_ends_at,
+--   current_period_end,
+--   cancel_at_period_end
+-- )
+-- select
+--   id,
+--   'cus_REPLACE_ME',
+--   'sub_REPLACE_ME',
+--   'price_REPLACE_ME',
+--   'active',
+--   null,
+--   '2026-12-31T23:59:59Z',
+--   false
+-- from public.venues
+-- where name = 'Shy Lounge'
+-- on conflict (venue_id) do update set
+--   stripe_customer_id = excluded.stripe_customer_id,
+--   stripe_subscription_id = excluded.stripe_subscription_id,
+--   stripe_price_id = excluded.stripe_price_id,
+--   status = excluded.status,
+--   current_period_end = excluded.current_period_end,
+--   cancel_at_period_end = excluded.cancel_at_period_end;
