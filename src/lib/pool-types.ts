@@ -1,5 +1,3 @@
-import type { TodaySession } from "@/app/dashboard/actions"
-
 export interface Rate {
   id: string
   name: string
@@ -68,12 +66,6 @@ export function calculateAmountOwed(
   }
 
   return Math.max(0, total)
-}
-
-export function sessionAmount(s: TodaySession): number {
-  const hours =
-    (new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()) / (1000 * 60 * 60)
-  return hours * s.actualRateCharged
 }
 
 export function formatDuration(startTime: Date, endTime?: Date): string {

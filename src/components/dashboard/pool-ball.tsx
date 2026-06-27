@@ -46,7 +46,14 @@ export function PoolBall({ number, size = "md", className = "" }: PoolBallProps)
       {/* Number badge */}
       <div
         className="flex items-center justify-center rounded-full bg-white font-bold"
-        style={{ width: "45%", height: "45%", color: "#000", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", fontFamily: "Times New Roman, Times, serif" }}
+        style={{
+          width: "45%",
+          height: "45%",
+          color: "#000",
+          boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)",
+          fontFamily:
+            '"Arial Rounded MT Bold", "Avenir Next Rounded", "Open Sans", Arial, sans-serif',
+        }}
       >
         {number}
       </div>
