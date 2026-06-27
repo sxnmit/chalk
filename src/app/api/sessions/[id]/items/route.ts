@@ -31,10 +31,9 @@ export async function POST(
 
     if (sessionErr || !session) return NextResponse.json({ error: "Session not found" }, { status: 404 })
 
-    // Validate menu item and check stock
     const { data: menuItem, error: itemErr } = await supabase
       .from("menu_items")
-      .select("id, price_cents, stock_quantity")
+      .select("id")
       .eq("id", parsed.data.menu_item_id)
       .eq("venue_id", venueId)
       .eq("available", true)
@@ -42,35 +41,21 @@ export async function POST(
 
     if (itemErr || !menuItem) return NextResponse.json({ error: "Menu item not found or unavailable" }, { status: 404 })
 
-    // Check stock if tracked
-    if (menuItem.stock_quantity !== null) {
-      if (menuItem.stock_quantity < parsed.data.quantity) {
-        return NextResponse.json(
-          { error: menuItem.stock_quantity === 0 ? "Item is sold out" : `Only ${menuItem.stock_quantity} left in stock` },
-          { status: 409 }
-        )
-      }
-      // Atomically decrement stock
-      const { error: stockErr } = await supabase
-        .from("menu_items")
-        .update({ stock_quantity: menuItem.stock_quantity - parsed.data.quantity })
-        .eq("id", menuItem.id)
-        .eq("venue_id", venueId)
-      if (stockErr) return NextResponse.json({ error: stockErr.message }, { status: 500 })
-    }
-
     const { data, error } = await supabase
-      .from("order_items")
-      .insert({
-        venue_id: venueId,
-        session_id: sessionId,
-        menu_item_id: parsed.data.menu_item_id,
-        quantity: parsed.data.quantity,
-        price_at_time_cents: menuItem.price_cents,
+      .rpc("add_order_item_with_stock", {
+        p_venue_id: venueId,
+        p_session_id: sessionId,
+        p_menu_item_id: parsed.data.menu_item_id,
+        p_quantity: parsed.data.quantity,
       })
-      .select()
-      .single()
 
+    if (error?.message?.startsWith("INSUFFICIENT_STOCK:")) {
+      const remaining = Number(error.message.split(":")[1] ?? 0)
+      return NextResponse.json(
+        { error: remaining === 0 ? "Item is sold out" : `Only ${remaining} left in stock` },
+        { status: 409 }
+      )
+    }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
   } catch {
