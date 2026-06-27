@@ -53,9 +53,9 @@
 /* Chalk Dark Theme — Deep Navy + Cyan/Teal accent */
 :root {
   --background: oklch(0.15 0.02 240);
-  --foreground: oklch(0.96 0.005 240);
+  --foreground: oklch(0.95 0 0);
   --card: oklch(0.18 0.015 240 / 0.8);
-  --card-foreground: oklch(0.96 0.005 240);
+  --card-foreground: oklch(0.95 0 0);
   --popover: oklch(0.16 0.02 240 / 0.95);
   --popover-foreground: oklch(0.95 0 0);
   /* Pool-table cyan/teal */
@@ -64,7 +64,7 @@
   --secondary: oklch(0.22 0.02 240);
   --secondary-foreground: oklch(0.85 0 0);
   --muted: oklch(0.25 0.015 240);
-  --muted-foreground: oklch(0.65 0.01 240);
+  --muted-foreground: oklch(0.65 0 0);
   --accent: oklch(0.7 0.15 195);
   --accent-foreground: oklch(0.15 0.02 240);
   --destructive: oklch(0.55 0.2 25);
@@ -81,7 +81,7 @@
   --success: oklch(0.7 0.18 145);
   --success-foreground: oklch(0.15 0.02 240);
   --sidebar: oklch(0.16 0.02 240);
-  --sidebar-foreground: oklch(0.96 0.005 240);
+  --sidebar-foreground: oklch(0.95 0 0);
   --sidebar-primary: oklch(0.7 0.15 195);
   --sidebar-primary-foreground: oklch(0.15 0.02 240);
   --sidebar-accent: oklch(0.22 0.02 240);
@@ -301,66 +301,3 @@
   background-color: var(--rdp-range_end-date-background-color);
 }
 .rdp-range_start.rdp-range_end { background: revert; }
-
-/* ── Animation keyframes ─────────────────────────────────────────────────── */
-
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes card-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-modal-in {
-  animation: modal-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-card-in {
-  animation: card-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-fade-in {
-  animation: fade-in 200ms ease-out both;
-}
-
-/* ── Motion preferences ──────────────────────────────────────────────────── */
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-ping {
-    animation: none;
-    opacity: 0.6;
-  }
-
-  .animate-modal-in,
-  .animate-card-in,
-  .animate-fade-in {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}

@@ -32,13 +32,13 @@ export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSe
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 touch-manipulation">
       {/* Backdrop */}
-      <div className="absolute inset-0 z-0 bg-background/80 backdrop-blur-sm animate-fade-in" onClick={onCancel} />
+      <div className="absolute inset-0 z-0 bg-background/80 backdrop-blur-sm" onClick={onCancel} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md rounded-xl border border-border/50 bg-card/95 p-6 shadow-2xl backdrop-blur-xl animate-modal-in">
+      <div className="relative w-full max-w-md rounded-xl border border-border/50 bg-card/95 p-6 shadow-2xl backdrop-blur-xl">
         <button
           onClick={onCancel}
-          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
@@ -75,7 +75,7 @@ export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSe
                     key={rate.id}
                     type="button"
                     onClick={() => setSelectedRate(rate)}
-                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] ${selectedRate.id === rate.id
+                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${selectedRate.id === rate.id
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
                       }`}

@@ -17,7 +17,6 @@ const exo2 = Exo_2({
 export const metadata: Metadata = {
   title: "Chalk",
   description: "Shy Lounge Management",
-  icons: { icon: "/favicon.png" },
 };
 
 export const viewport: Viewport = {

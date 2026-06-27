@@ -3,12 +3,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { DollarSign, Hash, Clock, Menu, CalendarIcon } from "lucide-react"
 import { type DateRange } from "react-day-picker"
-import { SidebarLayout } from "@/components/dashboard/sidebar-layout"
+import { SidebarContent } from "@/components/dashboard/sidebar"
 import { Calendar } from "@/components/ui/calendar"
 import { PopoverRoot, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { logoutAction } from "@/app/login/actions"
 import { loadRevenueData, RevenueData } from "./actions"
-import { useDeviceType } from "@/hooks/use-device-type"
 
 const VENUE_NAME = "Shy Lounge"
 
@@ -85,16 +84,15 @@ interface StatChipProps {
   label: string
   value: string
   highlight?: boolean
-  large?: boolean
 }
 
-function StatChip({ icon, label, value, highlight = false, large = false }: StatChipProps) {
+function StatChip({ icon, label, value, highlight = false }: StatChipProps) {
   return (
-    <div className={`flex h-full items-center gap-4 rounded-xl border ${large ? "px-6 py-5" : "px-4 py-4"} ${highlight ? "border-success/30 bg-success/10" : "border-border/50 bg-secondary/50"}`}>
+    <div className={`flex items-center gap-4 rounded-xl border px-5 py-4 ${highlight ? "border-success/30 bg-success/10" : "border-border/50 bg-secondary/50"}`}>
       <span className={highlight ? "text-success" : "text-muted-foreground"}>{icon}</span>
       <div>
         <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className={`font-bold ${large ? "text-3xl" : "text-2xl"} ${highlight ? "text-success" : "text-foreground"}`}>{value}</div>
+        <div className={`text-2xl font-bold ${highlight ? "text-success" : "text-foreground"}`}>{value}</div>
       </div>
     </div>
   )
@@ -119,7 +117,7 @@ export function RevenuePageClient() {
   const [data, setData] = useState<RevenueData>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const deviceType = useDeviceType()
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const fetchData = useCallback(async (from: Date, to: Date) => {
     setLoading(true)
@@ -153,9 +151,41 @@ export function RevenuePageClient() {
   const maxCount = Math.max(1, ...data.peakHours.map((h) => h.count))
 
   return (
-    <SidebarLayout venueName={VENUE_NAME} isOwner={true} onLogout={() => logoutAction()}>
-      {(openSidebar) => (
-        <>
+    <div className="flex min-h-screen bg-background">
+
+      {/* ── Desktop sidebar ──────────────────────────────────────────────────── */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col lg:flex">
+        <SidebarContent
+          venueName={VENUE_NAME}
+          isOwner={true}
+          onLogout={() => logoutAction()}
+        />
+      </aside>
+
+      {/* ── Mobile sidebar overlay ───────────────────────────────────────────── */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Mobile sidebar panel ─────────────────────────────────────────────── */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col lg:hidden transition-transform duration-300 ${
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <SidebarContent
+          venueName={VENUE_NAME}
+          isOwner={true}
+          onLogout={() => logoutAction()}
+          onClose={() => setMobileSidebarOpen(false)}
+        />
+      </div>
+
+      {/* ── Content ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-1 flex-col lg:ml-56">
         {/* ── Top bar ────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-30 border-b border-border/50">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
@@ -163,7 +193,7 @@ export function RevenuePageClient() {
 
             {/* Mobile hamburger */}
             <button
-              onClick={openSidebar}
+              onClick={() => setMobileSidebarOpen(true)}
               aria-label="Open navigation"
               className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
             >
@@ -191,27 +221,26 @@ export function RevenuePageClient() {
                 </PopoverTrigger>
 
                 <PopoverContent className="p-0 w-auto" align="end">
-                  {/* Quick presets — top, immediately reachable */}
-                  <div className="flex flex-wrap gap-1.5 border-b border-border/50 px-3 py-2.5">
+                  <Calendar
+                    mode="range"
+                    selected={range}
+                    onSelect={handleRangeSelect}
+                    numberOfMonths={1}
+                    disabled={{ after: new Date() }}
+                    defaultMonth={range.from}
+                  />
+                  {/* Quick presets */}
+                  <div className="border-t border-border/50 px-3 py-2 flex flex-wrap gap-1.5">
                     {PRESETS.map((p) => (
                       <button
                         key={p.label}
                         onClick={() => applyPreset(p.range())}
-                        className="rounded-lg border border-border/50 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground active:scale-[0.97]"
+                        className="rounded-lg border border-border/50 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
                       >
                         {p.label}
                       </button>
                     ))}
                   </div>
-                  <Calendar
-                    mode="range"
-                    selected={range}
-                    onSelect={handleRangeSelect}
-                    numberOfMonths={deviceType === "mobile" ? 1 : 2}
-                    disabled={{ after: new Date() }}
-                    defaultMonth={range.from}
-                    fixedWeeks
-                  />
                 </PopoverContent>
               </PopoverRoot>
             </div>
@@ -223,13 +252,11 @@ export function RevenuePageClient() {
           {error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : (
-            <div className={`space-y-8 transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+            <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
 
-              {/* Stat chips — revenue gets double width to reflect its importance */}
-              <div className="grid gap-4 sm:grid-cols-4">
-                <div className="sm:col-span-2">
-                  <StatChip icon={<DollarSign className="h-7 w-7" />} label="Total Revenue" value={formatCurrency(data.totalRevenue)} highlight large />
-                </div>
+              {/* Stat chips */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <StatChip icon={<DollarSign className="h-6 w-6" />} label="Total Revenue" value={formatCurrency(data.totalRevenue)} highlight />
                 <StatChip icon={<Hash className="h-6 w-6" />} label="Sessions" value={String(data.sessionCount)} />
                 <StatChip icon={<Clock className="h-6 w-6" />} label="Avg Session" value={formatAvgDuration(data.avgSessionMinutes)} />
               </div>
@@ -239,9 +266,9 @@ export function RevenuePageClient() {
                 <h2 className="mb-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Peak Hours</h2>
                 <div className="overflow-x-auto">
                   <div className="min-w-[520px]">
-                    <div className="flex items-end gap-1 h-[148px]">
+                    <div className="flex items-end gap-1 h-[110px]">
                       {data.peakHours.map(({ hour, count }) => {
-                        const barH = Math.max(count > 0 ? 4 : 1, Math.round((count / maxCount) * 140))
+                        const barH = Math.max(count > 0 ? 4 : 1, Math.round((count / maxCount) * 100))
                         return (
                           <div
                             key={hour}
@@ -249,7 +276,7 @@ export function RevenuePageClient() {
                             className="group flex flex-1 flex-col items-center justify-end cursor-default"
                           >
                             <div
-                              className="w-full rounded-t bg-primary/40 transition-colors group-hover:bg-primary"
+                              className="w-full rounded-t bg-[#2a7db5]/40 transition-colors group-hover:bg-[#2a7db5]"
                               style={{ height: `${barH}px` }}
                             />
                           </div>
@@ -287,7 +314,7 @@ export function RevenuePageClient() {
                     </thead>
                     <tbody>
                       {data.tierBreakdown.map((tier) => (
-                        <tr key={tier.label} className="border-b border-border/20 last:border-0 transition-colors hover:bg-muted/20">
+                        <tr key={tier.label} className="border-b border-border/20 last:border-0">
                           <td className="px-5 py-3.5 font-medium text-foreground">{tier.label}</td>
                           <td className="px-5 py-3.5 text-right tabular-nums text-muted-foreground">{tier.sessionCount}</td>
                           <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-success">{formatCurrency(tier.revenue)}</td>
@@ -312,8 +339,7 @@ export function RevenuePageClient() {
             </div>
           )}
         </main>
-        </>
-      )}
-    </SidebarLayout>
+      </div>
+    </div>
   )
 }

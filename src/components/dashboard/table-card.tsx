@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Play, Square, Clock, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -16,12 +16,6 @@ import {
 } from "@/lib/pool-types"
 
 // ── Sub-components ──────────────────────────────────────────────────────────
-
-// Isolated so formatTime() isn't re-called on every 1-second tick from the parent.
-function StartTime({ startTime }: { startTime: Date }) {
-  const label = useMemo(() => formatTime(startTime), [startTime])
-  return <span>Started {label}</span>
-}
 
 function FreeContent() {
   return (
@@ -86,7 +80,7 @@ function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
       {/* Footer */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>{rate?.name ?? "Standard"} rate</span>
-        <StartTime startTime={session.startTime} />
+        <span>Started {formatTime(session.startTime)}</span>
       </div>
     </div>
   )
@@ -108,9 +102,9 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-200 ${isOccupied
-        ? "border-primary/60 bg-card shadow-xl shadow-primary/15"
-        : "border-border/50 bg-card hover:border-primary/20 hover:shadow-md hover:shadow-primary/5"
+      className={`group relative flex flex-col overflow-hidden rounded-xl border transition-all ${isOccupied
+        ? "border-primary/50 bg-card shadow-lg shadow-primary/10"
+        : "border-border/50 bg-card hover:border-border"
         }`}
     >
       {/* Live indicator */}
@@ -148,7 +142,7 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
           {isOccupied ? (
             <Button
               onClick={() => onEndSession(table.id)}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-transform"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               size="lg"
             >
               <Square className="mr-2 h-4 w-4" />
@@ -158,7 +152,7 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
             <Button
               onClick={() => onStartSession(table.id)}
               variant="outline"
-              className="w-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary active:scale-[0.98] transition-transform"
+              className="w-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
               size="lg"
             >
               <Play className="mr-2 h-4 w-4" />

@@ -1,8 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node \"C:\\\\Users\\\\sanmi\\\\OneDrive\\\\Documents\\\\chalk\\\\.agents\\\\skills\\\\impeccable\\\\scripts\\\\cleanup-deprecated.mjs\")",
-      "Bash(npx tsc:*)"
+      "Bash(ls:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx|json\\)$\")"
     ]
   }
 }

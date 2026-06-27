@@ -11,7 +11,7 @@ export default function LoginPage() {
     <LightWavesBackground colors={CHALK_COLORS} intensity={0.7}>
       {/* Logo — top left of screen */}
       <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <Image src="/logo.svg" alt="Chalk" width={200} height={72} className="h-14 sm:h-18 w-auto" style={{ width: "auto" }} />
+        <Image src="/logo.png" alt="Chalk" width={200} height={72} className="h-14 sm:h-18 w-auto" style={{ width: "auto" }} />
       </div>
 
       <div className="flex h-full items-center justify-center p-4">

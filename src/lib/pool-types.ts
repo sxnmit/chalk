@@ -85,13 +85,10 @@ export function formatTime(date: Date): string {
   })
 }
 
-// Created once — Intl constructors are expensive to instantiate on every call.
-const USD_FORMATTER = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-})
-
 export function formatCurrency(amount: number): string {
-  return USD_FORMATTER.format(amount)
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(amount)
 }
