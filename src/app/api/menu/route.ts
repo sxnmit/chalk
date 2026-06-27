@@ -8,7 +8,7 @@ const CreateSchema = z.object({
   category: z.string().min(1).max(30),
   price_cents: z.number().int().min(1).max(99999),
   available: z.boolean().default(true),
-  sort_order: z.number().int().default(0),
+  stock_quantity: z.number().int().min(0).nullable().default(null),
 })
 
 export async function GET() {
@@ -21,12 +21,11 @@ export async function GET() {
       .select("*")
       .eq("venue_id", venueId)
       .order("category")
-      .order("sort_order")
       .order("name")
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 }
@@ -47,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 }

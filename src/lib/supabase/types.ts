@@ -48,6 +48,7 @@ export type Database = {
           name: string
           price_cents: number
           sort_order: number
+          stock_quantity: number | null
           venue_id: string
         }
         Insert: {
@@ -58,6 +59,7 @@ export type Database = {
           name: string
           price_cents: number
           sort_order?: number
+          stock_quantity?: number | null
           venue_id: string
         }
         Update: {
@@ -68,6 +70,7 @@ export type Database = {
           name?: string
           price_cents?: number
           sort_order?: number
+          stock_quantity?: number | null
           venue_id?: string
         }
         Relationships: [

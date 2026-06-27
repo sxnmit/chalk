@@ -8,7 +8,7 @@ const UpdateSchema = z.object({
   category: z.string().min(1).max(30).optional(),
   price_cents: z.number().int().min(1).max(99999).optional(),
   available: z.boolean().optional(),
-  sort_order: z.number().int().optional(),
+  stock_quantity: z.number().int().min(0).nullable().optional(),
 })
 
 export async function PATCH(
@@ -34,7 +34,7 @@ export async function PATCH(
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json(data)
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 }
@@ -56,7 +56,7 @@ export async function DELETE(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return new NextResponse(null, { status: 204 })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 }

@@ -29,7 +29,8 @@ export function MenuItemFormSheet({ open, onOpenChange, item, existingCategories
   const [customCategory, setCustomCategory] = useState("")
   const [priceDollars, setPriceDollars] = useState("")
   const [available, setAvailable] = useState(true)
-  const [sortOrder, setSortOrder] = useState("0")
+  const [trackStock, setTrackStock] = useState(false)
+  const [stockQty, setStockQty] = useState("0")
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -45,7 +46,9 @@ export function MenuItemFormSheet({ open, onOpenChange, item, existingCategories
       }
       setPriceDollars(item ? (item.price_cents / 100).toFixed(2) : "")
       setAvailable(item?.available ?? true)
-      setSortOrder(String(item?.sort_order ?? 0))
+      const hasStock = item?.stock_quantity !== null && item?.stock_quantity !== undefined
+      setTrackStock(hasStock)
+      setStockQty(hasStock ? String(item!.stock_quantity) : "0")
     }
   }, [open, item])
 
@@ -61,7 +64,13 @@ export function MenuItemFormSheet({ open, onOpenChange, item, existingCategories
 
     setLoading(true)
     try {
-      const payload = { name: name.trim(), category: finalCategory, price_cents: price, available, sort_order: parseInt(sortOrder) || 0 }
+      const payload = {
+        name: name.trim(),
+        category: finalCategory,
+        price_cents: price,
+        available,
+        stock_quantity: trackStock ? (parseInt(stockQty) || 0) : null,
+      }
       const url = isEdit ? `/api/menu/${item!.id}` : "/api/menu"
       const method = isEdit ? "PATCH" : "POST"
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
@@ -69,7 +78,7 @@ export function MenuItemFormSheet({ open, onOpenChange, item, existingCategories
       toast.success(isEdit ? "Item updated" : "Item added")
       onSaved()
       onOpenChange(false)
-    } catch (err) {
+    } catch {
       toast.error("Failed to save item")
     } finally {
       setLoading(false)
@@ -138,15 +147,37 @@ export function MenuItemFormSheet({ open, onOpenChange, item, existingCategories
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="item-sort">Sort Order</Label>
-            <Input
-              id="item-sort"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              type="number"
-              min="0"
-            />
+          {/* Stock tracking */}
+          <div className="rounded-lg border border-border/50 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="track-stock" className="text-sm font-medium">Track stock</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {trackStock ? "Shows sold out when stock hits 0" : "Unlimited — no stock limit"}
+                </p>
+              </div>
+              <Switch
+                id="track-stock"
+                checked={trackStock}
+                onCheckedChange={setTrackStock}
+                aria-label="Track stock quantity"
+              />
+            </div>
+
+            {trackStock && (
+              <div className="space-y-1.5">
+                <Label htmlFor="stock-qty">Units available</Label>
+                <Input
+                  id="stock-qty"
+                  value={stockQty}
+                  onChange={(e) => setStockQty(e.target.value)}
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

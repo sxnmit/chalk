@@ -129,6 +129,7 @@ export default function MenuPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-center">Stock</TableHead>
                   <TableHead className="text-center">Available</TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
@@ -142,6 +143,17 @@ export default function MenuPage() {
                     </TableCell>
                     <TableCell className="text-right font-semibold text-success tabular-nums">
                       {formatCAD(item.price_cents)}
+                    </TableCell>
+                    <TableCell className="text-center tabular-nums">
+                      {item.stock_quantity === null ? (
+                        <span className="text-xs text-muted-foreground">∞</span>
+                      ) : item.stock_quantity === 0 ? (
+                        <span className="text-xs font-semibold text-destructive">Sold out</span>
+                      ) : (
+                        <span className={`text-sm font-medium ${item.stock_quantity <= 5 ? "text-amber-400" : "text-foreground"}`}>
+                          {item.stock_quantity}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <Switch
