@@ -263,7 +263,7 @@ export function RevenuePageClient() {
 
               {/* Peak hours chart */}
               <div className="rounded-xl border border-border/50 bg-card p-5">
-                <h2 className="mb-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Peak Hours</h2>
+                <h2 className="mb-5 text-sm font-semibold uppercase tracking-widest text-muted-foreground">Peak Hours</h2>
                 <div className="overflow-x-auto">
                   <div className="min-w-[520px]">
                     <div className="flex items-end gap-1 h-[110px]">
@@ -272,11 +272,15 @@ export function RevenuePageClient() {
                         return (
                           <div
                             key={hour}
-                            title={`${formatHourLabel(hour)}: ${count} session${count !== 1 ? "s" : ""}`}
-                            className="group flex flex-1 flex-col items-center justify-end cursor-default"
+                            className="group relative flex flex-1 flex-col items-center justify-end cursor-default"
                           >
+                            {count > 0 && (
+                              <span className="pointer-events-none absolute -top-5 left-1/2 hidden -translate-x-1/2 text-[9px] tabular-nums text-foreground group-hover:block">
+                                {count}
+                              </span>
+                            )}
                             <div
-                              className="w-full rounded-t bg-[#2a7db5]/40 transition-colors group-hover:bg-[#2a7db5]"
+                              className="w-full rounded-t bg-primary/40 transition-colors group-hover:bg-primary"
                               style={{ height: `${barH}px` }}
                             />
                           </div>
@@ -299,7 +303,7 @@ export function RevenuePageClient() {
               {/* Rate tier breakdown */}
               <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
                 <div className="border-b border-border/50 px-5 py-4">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">By Rate Tier</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">By Rate Tier</h2>
                 </div>
                 {data.tierBreakdown.length === 0 ? (
                   <p className="px-5 py-10 text-center text-sm text-muted-foreground">No completed sessions in this period.</p>

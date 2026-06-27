@@ -129,8 +129,8 @@
 
 .rdp-root {
   /* Override accent to pool blue */
-  --rdp-accent-color: #2a7db5;
-  --rdp-accent-background-color: rgba(42, 125, 181, 0.18);
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: color-mix(in oklch, var(--primary) 18%, transparent);
 
   --rdp-day-height: 36px;
   --rdp-day-width: 36px;
