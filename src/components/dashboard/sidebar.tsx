@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BarChart2, LogOut } from "lucide-react"
+import { LayoutDashboard, BarChart2, LogOut, LayoutGrid, DollarSign } from "lucide-react"
 
 type NavItem = {
   key: string
@@ -16,6 +16,11 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { key: "revenue", label: "Revenue", icon: BarChart2, href: "/revenue", ownerOnly: true },
+]
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { key: "admin-tables", label: "Tables", icon: LayoutGrid, href: "/admin/tables", ownerOnly: true },
+  { key: "admin-rates", label: "Rate tiers", icon: DollarSign, href: "/admin/rates", ownerOnly: true },
 ]
 
 export interface SidebarContentProps {
@@ -34,6 +39,7 @@ export function SidebarContent({
   const pathname = usePathname()
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner)
+  const visibleAdminItems = ADMIN_NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner)
 
   const itemClass = (active: boolean) =>
     `flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${active
@@ -52,7 +58,7 @@ export function SidebarContent({
           height={40}
           className="h-9 w-auto object-contain"
           priority
-        /> 
+        />
       </div>
 
       {/* Navigation */}
@@ -72,6 +78,29 @@ export function SidebarContent({
             </Link>
           )
         })}
+
+        {visibleAdminItems.length > 0 && (
+          <>
+            <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              Admin
+            </p>
+            {visibleAdminItems.map((item) => {
+              const Icon = item.icon
+              const active = pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={onClose}
+                  className={itemClass(active)}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </>
+        )}
       </nav>
 
       {/* Bottom: venue name + logout */}

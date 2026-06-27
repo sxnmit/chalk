@@ -97,8 +97,8 @@ async function loadTodaySummaryForVenue(
   return { totalRevenue, sessionCount: (rows ?? []).length }
 }
 
-// Reads venue_id, role, and user id directly from the JWT — no DB round-trip.
-// Requires the custom_access_token_hook Postgres function to be registered in Supabase.
+// Reads venue_id, role, and user id from the JWT. Falls back to a DB lookup
+// (venue_members → users) when claims are absent (e.g. token pre-dates the hook).
 async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("Not authenticated")
@@ -107,14 +107,38 @@ async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createCli
     Buffer.from(session.access_token.split(".")[1], "base64url").toString()
   )
 
-  const venueId = payload.app_metadata?.venue_id as string | undefined
-  const role = payload.app_metadata?.role as string | undefined
+  let venueId = payload.app_metadata?.venue_id as string | undefined
+  let role = payload.app_metadata?.role as string | undefined
 
-  if (!venueId || !role) {
-    throw new Error("Missing claims in token — ensure custom_access_token_hook is registered in Supabase")
+  if (!venueId) {
+    const { data: member } = await supabase
+      .from("venue_members")
+      .select("venue_id, role")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (member) {
+      venueId = member.venue_id
+      role = member.role
+    } else {
+      const { data: user } = await supabase
+        .from("users")
+        .select("venue_id, role")
+        .eq("id", session.user.id)
+        .maybeSingle()
+
+      if (user) {
+        venueId = user.venue_id
+        role = user.role
+      }
+    }
   }
 
-  return { venueId, role, userId: session.user.id }
+  if (!venueId) throw new Error("User has no venue — ensure onboarding is complete")
+
+  return { venueId, role: role ?? "staff", userId: session.user.id }
 }
 
 // ── Public actions ─────────────────────────────────────────────────────────────
@@ -133,7 +157,7 @@ export async function loadDashboardData(): Promise<{
     .from("tables")
     .select("id, name, display_order")
     .eq("venue_id", venueId)
-    .neq("status", "inactive")
+    .in("status", ["free", "occupied"])
     .order("display_order")
   if (tablesError) throw tablesError
 
@@ -157,6 +181,7 @@ export async function loadDashboardData(): Promise<{
       .from("rates")
       .select("id, label, hourly_rate, is_default")
       .eq("venue_id", venueId)
+      .eq("active", true)
       .order("hourly_rate"),
     loadTodaySummaryForVenue(supabase, { venue_id: venueId }),
   ])
