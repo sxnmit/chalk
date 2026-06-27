@@ -1,7 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { LogOut, DollarSign, Users, CheckCircle, BarChart2 } from "lucide-react"
+import Link from "next/link"
+import { LogOut, DollarSign, Users, CheckCircle, BarChart2, UtensilsCrossed } from "lucide-react"
 
 interface StatChipProps {
   icon: React.ReactNode
@@ -69,6 +70,14 @@ export function Header({
             {venueName}
           </span>
           <div className="flex items-center justify-end gap-2">
+            <Link
+              href="/menu"
+              className="touch-manipulation flex items-center justify-center gap-1.5 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
+              aria-label="Menu admin"
+            >
+              <UtensilsCrossed className="h-5 w-5" />
+              <span className="text-xs font-medium">Menu</span>
+            </Link>
             {isOwner && (
               <button
                 onClick={onSummary}
@@ -149,6 +158,14 @@ export function Header({
                 value={String(completedSessions)}
               />
             </div>
+            <Link
+              href="/menu"
+              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-5 py-3 text-primary transition-colors hover:bg-primary/10"
+              aria-label="Menu admin"
+            >
+              <UtensilsCrossed className="h-5 w-5" />
+              <span className="text-sm font-medium">Menu</span>
+            </Link>
             {isOwner && (
               <button
                 onClick={onSummary}
