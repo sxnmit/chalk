@@ -303,12 +303,21 @@
 .rdp-range_start.rdp-range_end { background: revert; }
 
 @media print {
-  body > *:not(.receipt-print-target) {
-    display: none !important;
+  body {
+    visibility: hidden;
+    background: white !important;
+    margin: 0;
+    padding: 0;
+  }
+  .receipt-print-target,
+  .receipt-print-target * {
+    visibility: visible;
   }
   .receipt-print-target {
-    display: block !important;
-    max-width: 80mm;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
     margin: 0 auto;
   }
   .receipt-root {
