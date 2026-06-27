@@ -2,17 +2,25 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+interface InputProps extends React.ComponentProps<"input"> {
+  error?: string
+}
+
+function Input({ className, type, error, "aria-invalid": ariaInvalid, ...props }: InputProps) {
   return (
-    <input
-      type={type}
-      data-slot="input"
-      className={cn(
-        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        className
-      )}
-      {...props}
-    />
+    <div className="w-full">
+      <input
+        type={type}
+        data-slot="input"
+        aria-invalid={ariaInvalid ?? Boolean(error)}
+        className={cn(
+          "h-11 w-full min-w-0 rounded-[var(--radius)] border border-input bg-surface px-3 py-2 text-base text-text transition-colors outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-text placeholder:text-text-faint focus-visible:border-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chalk disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-faint aria-invalid:border-danger aria-invalid:focus-visible:outline-danger md:text-sm",
+          className
+        )}
+        {...props}
+      />
+      {error && <p className="mt-1.5 text-sm text-danger">{error}</p>}
+    </div>
   )
 }
 

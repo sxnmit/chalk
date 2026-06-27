@@ -1,31 +1,25 @@
 "use client"
 
-import Image from "next/image"
-import { LightWavesBackground } from "@/components/login/light-waves"
 import { LoginForm } from "@/app/login/functions"
-
-const CHALK_COLORS = ["#2a7db5", "#1e6a9e", "#3a8dc5", "#1a5a8a", "#0a4a7a"]
+import { Logo } from "@/components/ui/logo"
 
 export default function LoginPage() {
   return (
-    <LightWavesBackground colors={CHALK_COLORS} intensity={0.7}>
-      {/* Logo — top left of screen */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <Image src="/logo.png" alt="Chalk" width={200} height={72} className="h-14 sm:h-18 w-auto" style={{ width: "auto" }} />
-      </div>
+    <main className="min-h-screen bg-bg text-text">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1280px] flex-col px-4 py-6 sm:px-6 lg:px-8">
+        <Logo />
 
-      <div className="flex h-full items-center justify-center p-4">
-        <div className="w-[92%] max-w-[400px] bg-[rgba(10,10,10,0.45)] backdrop-blur-md border border-[0.5px] border-white/[0.08] rounded-2xl py-8 px-6 sm:py-10 sm:px-8">
+        <div className="flex flex-1 items-center justify-center py-12">
+          <section className="w-full max-w-[400px] rounded-lg border border-border bg-surface p-6 sm:p-8">
+            <div className="mb-8">
+              <h1 className="text-h1 text-text">Welcome back</h1>
+              <p className="mt-1 text-body-sm text-text-muted">Sign in to Chalk</p>
+            </div>
 
-          {/* Card header */}
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-white text-xl sm:text-2xl font-semibold font-[family-name:var(--font-dm-sans)]">Welcome back</h1>
-            <p className="text-white/40 text-sm mt-1">Sign in to Chalk</p>
-          </div>
-
-          <LoginForm />
+            <LoginForm />
+          </section>
         </div>
       </div>
-    </LightWavesBackground>
+    </main>
   )
 }

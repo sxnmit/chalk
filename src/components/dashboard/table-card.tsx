@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Play, Square, Clock, User } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PoolBall } from "@/components/dashboard/pool-ball"
+import { StatusDot } from "@/components/ui/status-dot"
 import {
   PoolTable,
   TableSession,
@@ -20,7 +21,7 @@ import {
 function FreeContent() {
   return (
     <div className="flex-1 w-full">
-      <div className="relative w-full overflow-hidden rounded-lg" style={{ aspectRatio: "16/9" }}>
+      <div className="relative w-full overflow-hidden rounded-lg bg-surface-2" style={{ aspectRatio: "16/9" }}>
         <Image
           src="/pool_table.webp"
           alt="Pool table"
@@ -56,29 +57,29 @@ function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
       {/* Timer + player */}
       <div className="flex flex-col gap-2">
         {session.playerName && (
-          <div className="flex items-center gap-2 text-foreground">
-            <User className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 text-text">
+            <User className="h-4 w-4 text-text-muted" />
             <span className="font-medium">{session.playerName}</span>
           </div>
         )}
         <div className="flex items-center justify-center gap-3">
-          <Clock className="h-5 w-5 text-muted-foreground" />
-          <span className="font-mono text-5xl font-bold text-foreground">
+          <Clock className="h-5 w-5 text-text-muted" />
+          <span className="font-display text-5xl text-text">
             {formatDuration(session.startTime)}
           </span>
         </div>
       </div>
 
       {/* Amount owed — grows to fill the middle */}
-      <div className="flex flex-1 items-center justify-center rounded-xl bg-success/10 my-4">
+      <div className="my-4 flex flex-1 items-center justify-center rounded-lg border border-success/20 bg-success/10">
         <div className="text-center">
-          <div className="text-xs uppercase tracking-wider text-success/70 mb-1">Amount Owed</div>
-          <div className="text-5xl font-bold text-success">{formatCurrency(amountOwed)}</div>
+          <div className="text-caption mb-1 text-success/80">Amount Owed</div>
+          <div className="font-display text-5xl text-success">{formatCurrency(amountOwed)}</div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex items-center justify-between text-sm text-text-muted">
         <span>{rate?.name ?? "Standard"} rate</span>
         <span>Started {formatTime(session.startTime)}</span>
       </div>
@@ -102,35 +103,24 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-xl border transition-all ${isOccupied
-        ? "border-primary/50 bg-card shadow-lg shadow-primary/10"
-        : "border-border/50 bg-card hover:border-border"
+      className={`group relative flex min-h-[360px] flex-col overflow-hidden rounded-lg border bg-surface transition-colors ${isOccupied
+        ? "border-chalk"
+        : "border-border hover:border-border-strong"
         }`}
     >
-      {/* Live indicator */}
-      {isOccupied && (
-        <div className="absolute right-3 top-3 flex items-center gap-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-          </span>
-          <span className="text-xs font-medium text-primary">LIVE</span>
-        </div>
-      )}
-
       {/* Table identity */}
-      <div className="flex items-center gap-3 p-4 pb-2">
-        <PoolBall number={table.tableNumber} size="md" />
+      <div className="flex items-start justify-between gap-3 p-5 pb-2">
         <div>
-          <h3 className="font-semibold text-foreground">{table.name}</h3>
-          <span className={`text-sm ${isOccupied ? "text-primary" : "text-muted-foreground"}`}>
+          <h3 className="text-h3 text-text">{table.name}</h3>
+          <Badge variant={isOccupied ? "chalk" : "neutral"} size="sm" className="mt-2">
             {isOccupied ? "Occupied" : "Free"}
-          </span>
+          </Badge>
         </div>
+        <StatusDot number={table.tableNumber} />
       </div>
 
       {/* Card body */}
-      <div className="flex flex-1 flex-col px-4 pb-4">
+      <div className="flex flex-1 flex-col px-5 pb-5">
         {isOccupied && table.session ? (
           <OccupiedContent session={table.session} rate={rate} peakRate={peakRate} />
         ) : (
@@ -142,20 +132,20 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
           {isOccupied ? (
             <Button
               onClick={() => onEndSession(table.id)}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               size="lg"
+              className="w-full"
+              iconLeft={<Square className="h-4 w-4" />}
             >
-              <Square className="mr-2 h-4 w-4" />
               End Session
             </Button>
           ) : (
             <Button
               onClick={() => onStartSession(table.id)}
-              variant="outline"
-              className="w-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+              variant="secondary"
               size="lg"
+              className="w-full"
+              iconLeft={<Play className="h-4 w-4" />}
             >
-              <Play className="mr-2 h-4 w-4" />
               Start Session
             </Button>
           )}

@@ -13,6 +13,9 @@ import {
   endSessionAction,
 } from "@/app/dashboard/actions"
 import { SummaryDrawer } from "@/components/dashboard/summary-drawer"
+import { EmptyRack } from "@/components/ui/empty-rack"
+import { EmptyState } from "@/components/ui/empty-state"
+import { useToast } from "@/components/ui/toast"
 
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
@@ -25,6 +28,7 @@ export default function DashboardPage() {
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   // Generation counter: if a new load starts while one is in flight, discard the stale result.
   const loadGenRef = useRef(0)
@@ -73,7 +77,9 @@ export default function DashboardPage() {
     setTodayCompletedSessionsCount(completed)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    void Promise.resolve().then(load)
+  }, [load])
 
   // ── Derived stats ──────────────────────────────────────────────────────────
 
@@ -103,8 +109,9 @@ export default function DashboardPage() {
       await startSessionAction(startModalTable.id, rateId, playerName || undefined)
       await refresh()
       setStartModalTable(null)
+      toast(`${startModalTable.name} session started`, "success")
     },
-    [startModalTable, refresh]
+    [startModalTable, refresh, toast]
   )
 
   const handleConfirmEnd = useCallback(async () => {
@@ -112,12 +119,13 @@ export default function DashboardPage() {
     await endSessionAction(endModalTable.id)
     await refresh()
     setEndModalTable(null)
-  }, [endModalTable, refresh])
+    toast(`${endModalTable.name} session closed`, "success")
+  }, [endModalTable, refresh, toast])
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-bg">
       <Header
         venueName="Shy Lounge"
         todayRevenue={todayRevenue}
@@ -128,23 +136,33 @@ export default function DashboardPage() {
         onSummary={() => setSummaryOpen(true)}
       />
 
-      <main className="w-full px-4 pb-8 pt-36 sm:px-6 xl:px-8 xl:pt-48">
+      <main className="mx-auto w-full max-w-[1280px] px-4 pb-8 pt-36 sm:px-6 xl:px-8 xl:pt-36">
         {loading ? (
-          <p className="text-center text-sm text-muted-foreground">Loading tables…</p>
+          <p className="text-center text-sm text-text-muted">Loading tables…</p>
         ) : error ? (
-          <p className="text-center text-sm text-destructive">{error}</p>
+          <p className="text-center text-sm text-danger">{error}</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tables.map((table) => (
-              <TableCard
-                key={table.id}
-                table={table}
-                rates={rates}
-                onStartSession={handleStartSession}
-                onEndSession={handleEndSession}
+          <>
+            {activeTables === 0 && (
+              <EmptyState
+                icon={<EmptyRack />}
+                title="No active sessions"
+                description="All tables are currently free."
+                className="mb-6 rounded-lg border border-border bg-surface"
               />
-            ))}
-          </div>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {tables.map((table) => (
+                <TableCard
+                  key={table.id}
+                  table={table}
+                  rates={rates}
+                  onStartSession={handleStartSession}
+                  onEndSession={handleEndSession}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
 

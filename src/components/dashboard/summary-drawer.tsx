@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetCloseButton } from "@/components/ui/sheet"
+import { EmptyState } from "@/components/ui/empty-state"
 import { loadTodaySessions, TodaySession } from "@/app/dashboard/actions"
 import { formatTime, formatDuration, formatCurrency, sessionAmount } from "@/lib/pool-types"
 
@@ -16,10 +17,12 @@ export function SummaryDrawer({ open, onClose }: SummaryDrawerProps) {
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
-    loadTodaySessions()
-      .then(setSessions)
-      .finally(() => setLoading(false))
+    void Promise.resolve().then(() => {
+      setLoading(true)
+      loadTodaySessions()
+        .then(setSessions)
+        .finally(() => setLoading(false))
+    })
   }, [open])
 
   const totalRevenue = sessions.reduce((sum, s) => sum + sessionAmount(s), 0)
@@ -29,18 +32,16 @@ export function SummaryDrawer({ open, onClose }: SummaryDrawerProps) {
       <SheetContent>
         {/* Header */}
         <SheetHeader>
-          <SheetTitle>Today's Summary</SheetTitle>
+          <SheetTitle>Today&apos;s Summary</SheetTitle>
           <SheetCloseButton />
         </SheetHeader>
 
         {/* Session list */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-text-muted">Loading…</p>
           ) : sessions.length === 0 ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-muted-foreground">No completed sessions today.</p>
-            </div>
+            <EmptyState title="No completed sessions" description="Closed sessions will appear here." className="h-full" />
           ) : (
             sessions.map((s) => {
               const start = new Date(s.startedAt)
@@ -50,16 +51,16 @@ export function SummaryDrawer({ open, onClose }: SummaryDrawerProps) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-xl border border-border/50 bg-secondary/30 px-4 py-3 space-y-1.5"
+                  className="space-y-1.5 rounded-lg border border-border bg-surface px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-semibold text-foreground">{s.tableName}</span>
-                    <span className="font-bold text-success">{formatCurrency(amount)}</span>
+                    <span className="font-medium text-text">{s.tableName}</span>
+                    <span className="font-display text-xl text-success">{formatCurrency(amount)}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">{label}</div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="text-xs text-text-muted">{label}</div>
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
                     <span>{formatTime(start)}</span>
-                    <span>→</span>
+                    <span>-</span>
                     <span>{formatTime(end)}</span>
                     <span className="ml-auto font-mono">{formatDuration(start, end)}</span>
                   </div>
@@ -71,10 +72,10 @@ export function SummaryDrawer({ open, onClose }: SummaryDrawerProps) {
 
         {/* Total pinned at bottom */}
         {!loading && sessions.length > 0 && (
-          <div className="border-t border-border/50 px-6 py-4">
-            <div className="flex items-center justify-between rounded-xl bg-success/10 px-5 py-4">
-              <span className="text-base font-medium text-foreground">Total Revenue</span>
-              <span className="text-3xl font-bold text-success">{formatCurrency(totalRevenue)}</span>
+          <div className="border-t border-border px-6 py-4">
+            <div className="flex items-center justify-between rounded-lg border border-success/20 bg-success/10 px-5 py-4">
+              <span className="text-base font-medium text-text">Total Revenue</span>
+              <span className="font-display text-3xl text-success">{formatCurrency(totalRevenue)}</span>
             </div>
           </div>
         )}
