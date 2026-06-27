@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { Play, Square, Clock, User } from "lucide-react"
+import Link from "next/link"
+import { Play, Square, Clock, User, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PoolBall } from "@/components/dashboard/pool-ball"
 import {
@@ -138,16 +139,26 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
         )}
 
         {/* Action */}
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-4 space-y-2">
           {isOccupied ? (
-            <Button
-              onClick={() => onEndSession(table.id)}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              size="lg"
-            >
-              <Square className="mr-2 h-4 w-4" />
-              End Session
-            </Button>
+            <>
+              <Link
+                href={`/session/${table.session!.id}`}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/50 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors min-h-[44px]"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Order & Bill
+              </Link>
+              <Button
+                onClick={() => onEndSession(table.id)}
+                variant="outline"
+                className="w-full"
+                size="sm"
+              >
+                <Square className="mr-2 h-3.5 w-3.5" />
+                End (no bill)
+              </Button>
+            </>
           ) : (
             <Button
               onClick={() => onStartSession(table.id)}

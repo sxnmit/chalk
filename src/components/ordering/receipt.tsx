@@ -1,0 +1,141 @@
+"use client"
+
+import { forwardRef } from "react"
+import { formatCAD } from "@/lib/format"
+import { Separator } from "@/components/ui/separator"
+
+export interface ReceiptData {
+  venueName: string
+  receiptNumber: string
+  createdAt: string
+  tableName: string
+  startedAt: string
+  endedAt: string
+  durationMinutes: number
+  actualRateCharged: number
+  orderItems: { name: string; quantity: number; price_at_time_cents: number; line_total_cents: number }[]
+  tableTotalCents: number
+  itemsTotalCents: number
+  taxCents: number
+  grandTotalCents: number
+  method: "card" | "cash" | "terminal"
+  cardLast4?: string | null
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-CA", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true,
+  })
+}
+
+export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className="receipt-root mx-auto w-full max-w-[80mm] bg-white text-gray-900 p-4 font-mono text-xs leading-relaxed"
+    >
+      {/* Header */}
+      <div className="text-center mb-3">
+        <div className="font-bold text-base">{data.venueName}</div>
+        <div className="text-gray-500 text-[10px] mt-0.5">Receipt #{data.receiptNumber}</div>
+        <div className="text-gray-500 text-[10px]">{formatDateTime(data.createdAt)}</div>
+      </div>
+
+      <Separator className="bg-gray-300 my-2" />
+
+      {/* Session info */}
+      <div className="space-y-0.5 mb-2">
+        <div className="flex justify-between">
+          <span className="text-gray-500">Table</span>
+          <span className="font-medium">{data.tableName}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Start</span>
+          <span>{new Date(data.startedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">End</span>
+          <span>{new Date(data.endedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Duration</span>
+          <span>{formatDuration(data.durationMinutes)}</span>
+        </div>
+      </div>
+
+      <Separator className="bg-gray-300 my-2" />
+
+      {/* Table charge */}
+      <div className="flex justify-between mb-1">
+        <span>Table ({formatCAD(data.actualRateCharged * 100)}/hr × {formatDuration(data.durationMinutes)})</span>
+        <span className="font-medium">{formatCAD(data.tableTotalCents)}</span>
+      </div>
+
+      {/* Order items */}
+      {data.orderItems.length > 0 && (
+        <>
+          <Separator className="bg-gray-200 my-1.5" />
+          <div className="space-y-0.5 mb-1">
+            {data.orderItems.map((item, i) => (
+              <div key={i} className="flex justify-between">
+                <span>{item.quantity}× {item.name}</span>
+                <span>{formatCAD(item.line_total_cents)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <Separator className="bg-gray-300 my-2" />
+
+      {/* Totals */}
+      <div className="space-y-0.5">
+        {data.itemsTotalCents > 0 && (
+          <div className="flex justify-between text-gray-600">
+            <span>Food & drinks</span>
+            <span>{formatCAD(data.itemsTotalCents)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-gray-600">
+          <span>Tax</span>
+          <span>{formatCAD(data.taxCents)}</span>
+        </div>
+        <div className="flex justify-between font-bold text-sm mt-1">
+          <span>TOTAL</span>
+          <span>{formatCAD(data.grandTotalCents)}</span>
+        </div>
+      </div>
+
+      <Separator className="bg-gray-300 my-2" />
+
+      {/* Payment */}
+      <div className="text-gray-600 text-[10px] text-center">
+        {data.method === "cash" && "Paid by cash"}
+        {data.method === "card" && `Paid by card${data.cardLast4 ? ` •••• ${data.cardLast4}` : ""}`}
+        {data.method === "terminal" && "Paid by terminal"}
+      </div>
+
+      {/* Footer */}
+      <div className="text-center text-gray-400 text-[10px] mt-3">
+        Thanks for racking with Chalk.
+      </div>
+
+      <style jsx global>{`
+        @media print {
+          body > *:not(.receipt-print-target) { display: none !important; }
+          .receipt-print-target { display: block !important; }
+          .receipt-root { max-width: 80mm; margin: 0 auto; }
+        }
+      `}</style>
+    </div>
+  )
+})
+
+Receipt.displayName = "Receipt"

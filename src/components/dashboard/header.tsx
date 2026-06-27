@@ -1,6 +1,7 @@
 "use client"
 
-import { Menu, DollarSign, Users, CheckCircle } from "lucide-react"
+import Link from "next/link"
+import { Menu, DollarSign, Users, CheckCircle, UtensilsCrossed } from "lucide-react"
 
 interface StatChipProps {
   icon: React.ReactNode
@@ -57,7 +58,7 @@ export function Header({
 
         {/* ── Mobile / tablet (<lg): two rows ─────────────────────────────────── */}
         <div className="lg:hidden">
-          {/* Row 1: hamburger | venue name | spacer */}
+          {/* Row 1: hamburger | venue name | menu link */}
           <div className="grid grid-cols-3 items-center">
             <button
               onClick={onOpenSidebar}
@@ -71,8 +72,16 @@ export function Header({
               {venueName}
             </span>
 
-            {/* Spacer to balance hamburger */}
-            <div />
+            <div className="flex justify-end">
+              <Link
+                href="/menu"
+                className="touch-manipulation flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border/50 bg-secondary/50 px-3 text-primary transition-colors hover:bg-primary/10"
+                aria-label="Menu admin"
+              >
+                <UtensilsCrossed className="h-5 w-5" />
+                <span className="text-xs font-medium">Menu</span>
+              </Link>
+            </div>
           </div>
 
           {/* Row 2: stat chips */}
@@ -105,7 +114,7 @@ export function Header({
             </span>
           </div>
 
-          {/* Stat chips — pinned right */}
+          {/* Stat chips + Menu link — pinned right */}
           <div className="flex items-center gap-3">
             <StatChip
               icon={<DollarSign className="h-5 w-5" />}
@@ -123,6 +132,14 @@ export function Header({
               label="Sessions Today"
               value={String(completedSessions)}
             />
+            <Link
+              href="/menu"
+              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-4 py-2 text-primary transition-colors hover:bg-primary/10"
+              aria-label="Menu admin"
+            >
+              <UtensilsCrossed className="h-5 w-5" />
+              <span className="text-sm font-medium">Menu</span>
+            </Link>
           </div>
         </div>
 
