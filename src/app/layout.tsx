@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Exo_2 } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -33,7 +34,10 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${exo2.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-exo2)]">{children}</body>
+      <body className="min-h-full flex flex-col font-[family-name:var(--font-exo2)]">
+          {children}
+          <Toaster />
+        </body>
     </html>
   );
 }
