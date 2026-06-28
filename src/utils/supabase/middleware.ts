@@ -13,12 +13,18 @@ function isExemptPath(pathname: string) {
   return (
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
-    pathname.startsWith('/onboarding') ||
     pathname.startsWith('/billing/blocked') ||
     pathname.startsWith('/accept-invite') ||
     pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/api/auth/accept-invite') ||
     pathname.startsWith('/api/billing/portal')
+  )
+}
+
+function isOnboardingPath(pathname: string) {
+  return (
+    pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/api/onboarding')
   )
 }
 
@@ -64,6 +70,7 @@ export async function updateSession(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
   const protectedRoute = isProtectedPath(request.nextUrl.pathname)
@@ -80,24 +87,31 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  const venueId =
-    (user.app_metadata?.active_venue_id as string | undefined) ??
-    (user.app_metadata?.venue_id as string | undefined)
-
-  if (protectedRoute && !venueId) {
-    return redirectTo(request, '/onboarding')
+  // Hook-issued claims (venue_id, role) live on the JWT, not on auth.users.
+  let jwtAppMetadata: { venue_id?: string; active_venue_id?: string; role?: string } = {}
+  if (session?.access_token) {
+    try {
+      const payload = JSON.parse(
+        Buffer.from(session.access_token.split('.')[1], 'base64').toString('utf8')
+      )
+      jwtAppMetadata = payload.app_metadata ?? {}
+    } catch {
+      jwtAppMetadata = {}
+    }
   }
 
-  if (protectedRoute && venueId) {
+  const venueId = jwtAppMetadata.active_venue_id ?? jwtAppMetadata.venue_id
+  const onboardingRoute = isOnboardingPath(request.nextUrl.pathname)
+
+  // Resolve onboarding state once when we need it for either a protected
+  // route check or to guard the onboarding route itself.
+  let onboardingComplete = false
+  if (venueId && (protectedRoute || onboardingRoute)) {
     const { data: venue } = await supabase
       .from('venues')
       .select('onboarding_completed_at')
       .eq('id', venueId)
       .maybeSingle()
-
-    if (!venue?.onboarding_completed_at) {
-      return redirectTo(request, '/onboarding')
-    }
 
     const { data: subscription } = await supabase
       .from('subscriptions')
@@ -105,13 +119,19 @@ export async function updateSession(request: NextRequest) {
       .eq('venue_id', venueId)
       .maybeSingle()
 
-    if (!subscription) {
-      return redirectTo(request, '/onboarding')
-    }
+    onboardingComplete = Boolean(venue?.onboarding_completed_at && subscription)
 
-    if (BLOCKED_STATUSES.has(subscription.status)) {
+    if (protectedRoute && subscription && BLOCKED_STATUSES.has(subscription.status)) {
       return redirectTo(request, '/billing/blocked')
     }
+  }
+
+  if (protectedRoute && (!venueId || !onboardingComplete)) {
+    return redirectTo(request, '/onboarding')
+  }
+
+  if (onboardingRoute && venueId && onboardingComplete) {
+    return redirectTo(request, '/dashboard')
   }
 
   return supabaseResponse

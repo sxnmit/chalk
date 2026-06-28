@@ -147,6 +147,7 @@ export async function loadDashboardData(): Promise<{
   tables: PoolTable[]
   rates: Rate[]
   userRole: string
+  venueName: string
   todayRevenue: number
   todayCompletedSessionsCount: number
 }> {
@@ -174,6 +175,7 @@ export async function loadDashboardData(): Promise<{
   const [
     { data: sessions, error: sessionsError },
     { data: dbRates, error: ratesError },
+    { data: venueRow, error: venueRowError },
     todaySummary,
   ] = await Promise.all([
     sessionsQuery,
@@ -183,11 +185,13 @@ export async function loadDashboardData(): Promise<{
       .eq("venue_id", venueId)
       .eq("active", true)
       .order("hourly_rate"),
+    supabase.from("venues").select("name").eq("id", venueId).single(),
     loadTodaySummaryForVenue(supabase, { venue_id: venueId }),
   ])
 
   if (sessionsError) throw sessionsError
   if (ratesError) throw ratesError
+  if (venueRowError) throw venueRowError
 
   const rates: Rate[] = (dbRates ?? []).map((r) => ({
     id: r.id,
@@ -223,6 +227,7 @@ export async function loadDashboardData(): Promise<{
     tables: poolTables,
     rates,
     userRole: role,
+    venueName: venueRow?.name ?? "",
     todayRevenue: todaySummary.totalRevenue,
     todayCompletedSessionsCount: todaySummary.sessionCount,
   }
