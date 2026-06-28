@@ -2,10 +2,10 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Mail } from "lucide-react"
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AvatarIcon } from "@/components/icons/radix-icons-avatar"
+import { EnvelopeClosedIcon } from "@/components/icons/radix-icons-envelope-closed"
 import { LockClosedIcon } from "@/components/icons/radix-icons-lock-closed"
 import { LightWavesBackground } from "@/components/login/light-waves"
 import { createClient } from "@/utils/supabase/client"
@@ -66,7 +66,7 @@ function SignupForm() {
           />
         </div>
         <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">
-          <Mail size={20} color="var(--color-primary)" strokeWidth={1.5} className="shrink-0" />
+          <EnvelopeClosedIcon size={20} color="var(--color-primary)" strokeWidth={0.7} className="shrink-0" />
           <input
             type="email"
             value={email}
