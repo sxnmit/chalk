@@ -41,7 +41,6 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
   const [size, setSize] = useState("9ft")
   const [adminStatus, setAdminStatus] = useState<"active" | "maintenance" | "retired">("active")
   const [defaultRateId, setDefaultRateId] = useState<string>("")
-  const [displayOrder, setDisplayOrder] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,7 +51,6 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
       setSize(table?.size ?? "9ft")
       setAdminStatus(table?.admin_status ?? "active")
       setDefaultRateId(table?.default_rate_id ?? venueDefaultRate?.id ?? "")
-      setDisplayOrder(table?.display_order !== undefined ? String(table.display_order) : "")
       setError(null)
     }
   }, [open, table, rates])
@@ -68,7 +66,6 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
       admin_status: adminStatus,
       default_rate_id: defaultRateId || null,
     }
-    if (displayOrder !== "") body.display_order = parseInt(displayOrder, 10)
 
     try {
       const url = table ? `/api/admin/tables/${table.id}` : "/api/admin/tables"
@@ -158,18 +155,6 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="table-order">Sort order</Label>
-            <Input
-              id="table-order"
-              type="number"
-              min={0}
-              value={displayOrder}
-              onChange={(e) => setDisplayOrder(e.target.value)}
-              placeholder="Auto"
-            />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

@@ -156,7 +156,6 @@ export function TablesAdmin({ ratesForForm }: Props) {
                 <TableHead>Size</TableHead>
                 <TableHead>Default rate</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Order</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -169,7 +168,6 @@ export function TablesAdmin({ ratesForForm }: Props) {
                   <TableCell>
                     <StatusPill status={table.admin_status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{table.display_order}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button
