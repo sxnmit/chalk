@@ -13,7 +13,6 @@ import {
   Users,
   UtensilsCrossed,
   ChevronLeft,
-  ChevronRight,
 } from "lucide-react"
 
 type NavItem = {
@@ -76,14 +75,16 @@ export function SidebarContent({
         }`}
       >
         {collapsed ? (
-          <div
-            role="img"
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            title="Expand sidebar"
             aria-label="Chalk logo"
-            className="h-10 w-10 bg-no-repeat"
+            className="h-12 w-12 rounded-lg bg-no-repeat transition-colors hover:bg-white/5"
             style={{
               backgroundImage: "url('/logo.png')",
-              backgroundPosition: "-5px center",
-              backgroundSize: "110px 40px",
+              backgroundPosition: "-6px center",
+              backgroundSize: "132px 48px",
             }}
           />
         ) : (
@@ -96,20 +97,16 @@ export function SidebarContent({
             priority
           />
         )}
-        {onToggleCollapsed && (
+        {onToggleCollapsed && !collapsed && (
           <button
             type="button"
             onClick={onToggleCollapsed}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+            aria-expanded
             className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground lg:flex"
           >
-            {collapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <ChevronLeft className="h-5 w-5" />
-            )}
+            <ChevronLeft className="h-5 w-5" />
           </button>
         )}
       </div>
