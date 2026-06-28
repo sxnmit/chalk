@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { UserPlus } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,16 +26,23 @@ export function InviteMemberDialog({ onInvited }: { onInvited: () => void }) {
   const [error, setError] = useState<string | null>(null)
 
   async function submit() {
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Enter a valid email address")
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       const response = await fetch("/api/team/invite", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email: trimmedEmail, role }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Unable to send invite")
+      toast.success(`Invite sent to ${trimmedEmail}`)
       setOpen(false)
       setEmail("")
       setRole("staff")

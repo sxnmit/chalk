@@ -18,15 +18,23 @@ export function TeamMemberRow({
   member,
   canManage,
   isCurrentUser,
+  isLastOwner,
   onRoleChange,
   onRemove,
 }: {
   member: TeamMember
   canManage: boolean
   isCurrentUser: boolean
+  isLastOwner: boolean
   onRoleChange: (role: VenueRole) => void
   onRemove: () => void
 }) {
+  const removeDisabled = isCurrentUser || isLastOwner
+  const removeTitle = isCurrentUser
+    ? "You cannot remove yourself"
+    : isLastOwner
+    ? "Promote another member to owner first"
+    : undefined
   return (
     <div className="grid gap-3 border-b border-border py-4 last:border-b-0 sm:grid-cols-[1fr_auto_auto] sm:items-center">
       <div>
@@ -39,7 +47,7 @@ export function TeamMemberRow({
         <RoleSelect
           value={member.role}
           onChange={onRoleChange}
-          disabled={isCurrentUser && member.role === "owner"}
+          disabled={(isCurrentUser && member.role === "owner") || isLastOwner}
         />
       ) : (
         <Badge variant="secondary" className="capitalize">
@@ -47,7 +55,13 @@ export function TeamMemberRow({
         </Badge>
       )}
       {canManage && (
-        <Button variant="ghost" size="icon-sm" disabled={isCurrentUser} onClick={onRemove}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          disabled={removeDisabled}
+          title={removeTitle}
+          onClick={onRemove}
+        >
           <Trash2 />
           <span className="sr-only">Remove member</span>
         </Button>

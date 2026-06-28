@@ -100,8 +100,22 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  const venueId = jwtAppMetadata.active_venue_id ?? jwtAppMetadata.venue_id
+  let venueId = jwtAppMetadata.active_venue_id ?? jwtAppMetadata.venue_id
   const onboardingRoute = isOnboardingPath(request.nextUrl.pathname)
+
+  // JWT claims may not be issued yet for brand-new signups (hook timing).
+  // Fall back to venue_members so onboarding-completed users aren't bounced
+  // back to /onboarding on every request until their next token refresh.
+  if (!venueId && (protectedRoute || onboardingRoute)) {
+    const { data: membership } = await supabase
+      .from('venue_members')
+      .select('venue_id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    venueId = membership?.venue_id ?? undefined
+  }
 
   // Resolve onboarding state once when we need it for either a protected
   // route check or to guard the onboarding route itself.

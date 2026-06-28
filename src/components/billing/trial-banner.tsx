@@ -13,10 +13,26 @@ export function TrialBanner() {
   const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null)
 
   useEffect(() => {
-    fetch("/api/billing/subscription")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => setSubscription(data?.subscription ?? null))
-      .catch(() => setSubscription(null))
+    let cancelled = false
+    const refresh = () => {
+      fetch("/api/billing/subscription")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          if (!cancelled) setSubscription(data?.subscription ?? null)
+        })
+        .catch(() => {
+          if (!cancelled) setSubscription(null)
+        })
+    }
+    refresh()
+    const interval = setInterval(refresh, 60_000)
+    const onFocus = () => refresh()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [])
 
   if (subscription?.status !== "trialing") return null
