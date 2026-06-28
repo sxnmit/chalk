@@ -84,7 +84,7 @@ export function TablesAdmin({ ratesForForm }: Props) {
   useEffect(() => { void load() }, [load])
 
   const handleDelete = useCallback(async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? If sessions exist it will be retired instead.`)) return
+    if (!confirm(`Delete "${name}"? Tables with session history will be retired to preserve revenue records.`)) return
     const res = await fetch(`/api/admin/tables/${id}`, { method: "DELETE" })
     if (!res.ok) {
       const json = await res.json().catch(() => ({}))
@@ -110,9 +110,12 @@ export function TablesAdmin({ ratesForForm }: Props) {
     setIsSheetOpen(true)
   }
 
+  const venueDefaultRate = rates.find((r) => r.active && r.is_default)
+
   const rateLabel = (rateId: string | null) => {
-    if (!rateId) return "—"
-    const r = rates.find((x) => x.id === rateId)
+    const effectiveRateId = rateId ?? venueDefaultRate?.id
+    if (!effectiveRateId) return "—"
+    const r = rates.find((x) => x.id === effectiveRateId)
     return r ? `${r.label} ($${r.hourly_rate}/hr)` : "—"
   }
 
@@ -153,7 +156,6 @@ export function TablesAdmin({ ratesForForm }: Props) {
                 <TableHead>Size</TableHead>
                 <TableHead>Default rate</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Order</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -166,7 +168,6 @@ export function TablesAdmin({ ratesForForm }: Props) {
                   <TableCell>
                     <StatusPill status={table.admin_status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{table.display_order}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button

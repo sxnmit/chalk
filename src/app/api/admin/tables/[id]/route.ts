@@ -14,6 +14,12 @@ const UpdateSchema = z.object({
   default_rate_id: z.string().uuid().nullable().optional(),
 })
 
+function adminErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected error"
+  const status = message.includes("Not authenticated") ? 401 : 500
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,6 +33,17 @@ export async function PATCH(
     const body = await request.json()
     const parsed = UpdateSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+
+    if (parsed.data.default_rate_id) {
+      const { data: rate, error: rateError } = await supabase
+        .from("rates")
+        .select("id")
+        .eq("id", parsed.data.default_rate_id)
+        .eq("venue_id", venueId)
+        .maybeSingle()
+      if (rateError) return NextResponse.json({ error: rateError.message }, { status: 500 })
+      if (!rate) return NextResponse.json({ error: "Default rate not found for this venue" }, { status: 400 })
+    }
 
     const dbUpdates: Record<string, unknown> = {}
     if (parsed.data.name !== undefined) dbUpdates.name = parsed.data.name
@@ -62,8 +79,8 @@ export async function PATCH(
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json({ ...data, admin_status: dbStatusToAdmin(data.status) })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }
 
@@ -90,6 +107,7 @@ export async function DELETE(
       .from("sessions")
       .select("*", { count: "exact", head: true })
       .eq("table_id", id)
+      .eq("venue_id", venueId)
 
     if (count && count > 0) {
       // Soft-delete: retire the table to preserve session history
@@ -109,7 +127,7 @@ export async function DELETE(
     }
 
     return new NextResponse(null, { status: 204 })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }

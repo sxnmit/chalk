@@ -25,7 +25,7 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
   const [label, setLabel] = useState("")
   const [hourlyRate, setHourlyRate] = useState("")
   const [active, setActive] = useState(true)
-  const [sortOrder, setSortOrder] = useState("")
+  const [isDefault, setIsDefault] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,7 +34,7 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
       setLabel(rate?.label ?? "")
       setHourlyRate(rate ? String(rate.hourly_rate) : "")
       setActive(rate?.active ?? true)
-      setSortOrder(rate?.sort_order !== undefined ? String(rate.sort_order) : "")
+      setIsDefault(rate?.is_default ?? false)
       setError(null)
     }
   }, [open, rate])
@@ -54,8 +54,8 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
       label: label.trim(),
       hourly_rate: parsedRate,
       active,
+      is_default: isDefault,
     }
-    if (sortOrder !== "") body.sort_order = parseInt(sortOrder, 10)
 
     try {
       const url = rate ? `/api/admin/rates/${rate.id}` : "/api/admin/rates"
@@ -114,18 +114,6 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="rate-order">Sort order</Label>
-            <Input
-              id="rate-order"
-              type="number"
-              min={0}
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              placeholder="Auto"
-            />
-          </div>
-
           <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/30 px-4 py-3">
             <Label htmlFor="rate-active" className="cursor-pointer">
               Active
@@ -137,6 +125,20 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
               id="rate-active"
               checked={active}
               onCheckedChange={setActive}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/30 px-4 py-3">
+            <Label htmlFor="rate-default" className="cursor-pointer">
+              Venue default
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                (pre-selected when starting sessions)
+              </span>
+            </Label>
+            <Switch
+              id="rate-default"
+              checked={isDefault}
+              onCheckedChange={setIsDefault}
             />
           </div>
 

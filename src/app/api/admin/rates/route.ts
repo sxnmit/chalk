@@ -13,6 +13,12 @@ const CreateSchema = z.object({
   is_default: z.boolean().default(false),
 })
 
+function adminErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected error"
+  const status = message.includes("Not authenticated") ? 401 : 500
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+}
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -28,8 +34,8 @@ export async function GET() {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data ?? [])
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }
 
@@ -55,6 +61,14 @@ export async function POST(request: NextRequest) {
       sortOrder = (maxRow?.sort_order ?? -1) + 1
     }
 
+    if (parsed.data.is_default) {
+      const { error: unsetDefaultError } = await supabase
+        .from("rates")
+        .update({ is_default: false })
+        .eq("venue_id", venueId)
+      if (unsetDefaultError) return NextResponse.json({ error: unsetDefaultError.message }, { status: 500 })
+    }
+
     const { data, error } = await supabase
       .from("rates")
       .insert({ ...parsed.data, sort_order: sortOrder, venue_id: venueId })
@@ -63,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }

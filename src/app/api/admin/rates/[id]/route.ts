@@ -13,6 +13,12 @@ const UpdateSchema = z.object({
   is_default: z.boolean().optional(),
 })
 
+function adminErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected error"
+  const status = message.includes("Not authenticated") ? 401 : 500
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,6 +33,15 @@ export async function PATCH(
     const parsed = UpdateSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
+    if (parsed.data.is_default) {
+      const { error: unsetDefaultError } = await supabase
+        .from("rates")
+        .update({ is_default: false })
+        .eq("venue_id", venueId)
+        .neq("id", id)
+      if (unsetDefaultError) return NextResponse.json({ error: unsetDefaultError.message }, { status: 500 })
+    }
+
     const { data, error } = await supabase
       .from("rates")
       .update(parsed.data)
@@ -38,8 +53,8 @@ export async function PATCH(
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json(data)
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }
 
@@ -82,6 +97,7 @@ export async function DELETE(
       .from("sessions")
       .select("*", { count: "exact", head: true })
       .eq("rate_id", id)
+      .eq("venue_id", venueId)
 
     if (count && count > 0) {
       const { error } = await supabase
@@ -100,7 +116,7 @@ export async function DELETE(
     }
 
     return new NextResponse(null, { status: 204 })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }

@@ -156,7 +156,7 @@ export async function loadDashboardData(): Promise<{
 
   const { data: tables, error: tablesError } = await supabase
     .from("tables")
-    .select("id, name, display_order")
+    .select("id, name, display_order, default_rate_id")
     .eq("venue_id", venueId)
     .in("status", ["free", "occupied"])
     .order("display_order")
@@ -227,6 +227,7 @@ export async function loadDashboardData(): Promise<{
       id: t.id,
       name: t.name,
       tableNumber: t.display_order,
+      defaultRateId: t.default_rate_id ?? undefined,
       session,
     }
   })

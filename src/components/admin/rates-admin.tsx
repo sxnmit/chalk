@@ -135,7 +135,6 @@ export function RatesAdmin() {
                 <TableHead>Name</TableHead>
                 <TableHead>Price / hr</TableHead>
                 <TableHead>Active</TableHead>
-                <TableHead>Order</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -159,7 +158,6 @@ export function RatesAdmin() {
                       size="sm"
                     />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{rate.sort_order}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button
