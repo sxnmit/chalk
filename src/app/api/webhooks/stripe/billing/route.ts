@@ -49,18 +49,26 @@ async function upsertSubscription(subscription: Stripe.Subscription) {
   if (error) throw error
 }
 
+async function isEventAlreadyProcessed(eventId: string) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from("processed_stripe_billing_events")
+    .select("stripe_event_id")
+    .eq("stripe_event_id", eventId)
+    .maybeSingle()
+
+  if (error) throw error
+  return Boolean(data)
+}
+
 async function markEventProcessed(eventId: string) {
   const admin = createAdminClient()
   const { error } = await admin
     .from("processed_stripe_billing_events")
     .insert({ stripe_event_id: eventId })
 
-  if (error) {
-    if (String(error.code) === "23505") return false
-    throw error
-  }
-
-  return true
+  // Ignore unique-violation: a concurrent retry already recorded the event.
+  if (error && String(error.code) !== "23505") throw error
 }
 
 export async function POST(request: Request) {
@@ -82,8 +90,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const shouldProcess = await markEventProcessed(event.id)
-    if (!shouldProcess) return NextResponse.json({ received: true, duplicate: true })
+    if (await isEventAlreadyProcessed(event.id)) {
+      return NextResponse.json({ received: true, duplicate: true })
+    }
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -105,6 +114,11 @@ export async function POST(request: Request) {
       default:
         break
     }
+
+    // Only record the event after the handler succeeds — otherwise Stripe's
+    // retry would be deduped against a row inserted by a failed attempt and
+    // the subscription state would stay stale forever.
+    await markEventProcessed(event.id)
 
     return NextResponse.json({ received: true })
   } catch (error) {

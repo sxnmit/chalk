@@ -38,6 +38,19 @@ function isProtectedPath(pathname: string) {
   )
 }
 
+// API surfaces that mutate venue state and must respect the subscription
+// paywall. /api/billing/portal and /api/webhooks/* are intentionally exempt
+// (the portal is the user's escape hatch; webhooks are signed by Stripe).
+function isPaywalledApiPath(pathname: string) {
+  return (
+    pathname.startsWith('/api/admin') ||
+    pathname.startsWith('/api/menu') ||
+    pathname.startsWith('/api/sessions') ||
+    pathname.startsWith('/api/team') ||
+    pathname.startsWith('/api/billing/checkout')
+  )
+}
+
 function redirectTo(request: NextRequest, pathname: string) {
   const url = request.nextUrl.clone()
   url.pathname = pathname
@@ -102,11 +115,12 @@ export async function updateSession(request: NextRequest) {
 
   let venueId = jwtAppMetadata.active_venue_id ?? jwtAppMetadata.venue_id
   const onboardingRoute = isOnboardingPath(request.nextUrl.pathname)
+  const paywalledApiRoute = isPaywalledApiPath(request.nextUrl.pathname)
 
   // JWT claims may not be issued yet for brand-new signups (hook timing).
   // Fall back to venue_members so onboarding-completed users aren't bounced
   // back to /onboarding on every request until their next token refresh.
-  if (!venueId && (protectedRoute || onboardingRoute)) {
+  if (!venueId && (protectedRoute || onboardingRoute || paywalledApiRoute)) {
     const { data: membership } = await supabase
       .from('venue_members')
       .select('venue_id')
@@ -120,7 +134,7 @@ export async function updateSession(request: NextRequest) {
   // Resolve onboarding state once when we need it for either a protected
   // route check or to guard the onboarding route itself.
   let onboardingComplete = false
-  if (venueId && (protectedRoute || onboardingRoute)) {
+  if (venueId && (protectedRoute || onboardingRoute || paywalledApiRoute)) {
     const { data: venue } = await supabase
       .from('venues')
       .select('onboarding_completed_at')
@@ -135,8 +149,16 @@ export async function updateSession(request: NextRequest) {
 
     onboardingComplete = Boolean(venue?.onboarding_completed_at && subscription)
 
-    if (protectedRoute && subscription && BLOCKED_STATUSES.has(subscription.status)) {
-      return redirectTo(request, '/billing/blocked')
+    if (subscription && BLOCKED_STATUSES.has(subscription.status)) {
+      if (paywalledApiRoute) {
+        return NextResponse.json(
+          { error: 'Subscription inactive' },
+          { status: 402 },
+        )
+      }
+      if (protectedRoute) {
+        return redirectTo(request, '/billing/blocked')
+      }
     }
   }
 
