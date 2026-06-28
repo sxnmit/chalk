@@ -147,6 +147,7 @@ export async function loadDashboardData(): Promise<{
   tables: PoolTable[]
   rates: Rate[]
   userRole: string
+  venueName: string
   todayRevenue: number
   todayCompletedSessionsCount: number
 }> {
@@ -174,27 +175,38 @@ export async function loadDashboardData(): Promise<{
   const [
     { data: sessions, error: sessionsError },
     { data: dbRates, error: ratesError },
+    { data: venueRow, error: venueRowError },
     todaySummary,
   ] = await Promise.all([
     sessionsQuery,
     supabase
       .from("rates")
-      .select("id, label, hourly_rate, is_default")
+      .select("id, label, hourly_rate, is_default, active")
       .eq("venue_id", venueId)
-      .eq("active", true)
       .order("hourly_rate"),
+    supabase.from("venues").select("name").eq("id", venueId).single(),
     loadTodaySummaryForVenue(supabase, { venue_id: venueId }),
   ])
 
   if (sessionsError) throw sessionsError
   if (ratesError) throw ratesError
+  if (venueRowError) throw venueRowError
 
-  const rates: Rate[] = (dbRates ?? []).map((r) => ({
+  // Active rates are selectable for new sessions; deactivated rates are kept
+  // only if a currently-active session still references one, so its name and
+  // pricing can still render until the session ends.
+  const activeSessionRateIds = new Set((sessions ?? []).map((s) => s.rate_id))
+  const visibleRates = (dbRates ?? []).filter(
+    (r) => r.active || activeSessionRateIds.has(r.id),
+  )
+
+  const rates: Rate[] = visibleRates.map((r) => ({
     id: r.id,
     name: r.label,
     pricePerHour: Number(r.hourly_rate),
     isDefault: r.is_default,
     isPeakRate: r.label.toLowerCase().includes("peak"),
+    isActive: r.active,
   }))
 
   const sessionByTableId = new Map((sessions ?? []).map((s) => [s.table_id, s]))
@@ -223,6 +235,7 @@ export async function loadDashboardData(): Promise<{
     tables: poolTables,
     rates,
     userRole: role,
+    venueName: venueRow?.name ?? "",
     todayRevenue: todaySummary.totalRevenue,
     todayCompletedSessionsCount: todaySummary.sessionCount,
   }

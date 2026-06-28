@@ -68,22 +68,28 @@ export async function POST(
         return NextResponse.json({ error: `Payment not succeeded (status: ${pi.status})` }, { status: 400 })
       }
 
+      // Compare against the amount the PI was authorized for (snapshotted at
+      // intent time), not the recomputed total — elapsed time between intent
+      // and confirm would otherwise reject every valid card payment.
       if (
         pi.currency !== "cad" ||
         pi.metadata.session_id !== sessionId ||
         pi.metadata.venue_id !== venueId ||
-        pi.amount_received < stripeAmountCents
+        pi.amount_received < pi.amount
       ) {
         return NextResponse.json({ error: "Payment intent does not match this checkout" }, { status: 400 })
       }
+
+      const billedGrandTotalCents = pi.amount_received
+      const billedTableTotalCents = Math.max(0, billedGrandTotalCents - itemsTotalCents)
 
       const { data, error } = await supabase
         .from("payments")
         .update({
           method: "card",
-          table_total_cents: tableTotalCents,
+          table_total_cents: billedTableTotalCents,
           items_total_cents: itemsTotalCents,
-          grand_total_cents: grandTotalCents,
+          grand_total_cents: billedGrandTotalCents,
           stripe_payment_intent_id: piId,
           status: "succeeded",
         })
@@ -98,12 +104,16 @@ export async function POST(
       return NextResponse.json({ ok: true, payment_id: data.id })
     }
 
-    // Cash flow
+    // Cash flow — only reuse a row that hasn't already been bound to a Stripe
+    // PaymentIntent. Otherwise a prior card attempt's pending row would be
+    // silently relabeled as a successful cash payment.
     const { data: existing } = await supabase
       .from("payments")
-      .select("id")
+      .select("id, stripe_payment_intent_id, status")
       .eq("session_id", sessionId)
       .eq("venue_id", venueId)
+      .is("stripe_payment_intent_id", null)
+      .neq("status", "succeeded")
       .maybeSingle()
 
     let paymentId: string

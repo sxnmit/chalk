@@ -16,8 +16,8 @@ export interface StartSessionModalProps {
 
 export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSessionModalProps) {
   const currentlyPeak = isPeakHour(new Date())
-  const playerRates = rates.filter((r) => !r.isPeakRate)
-  const peakRate = rates.find((r) => r.isPeakRate)
+  const playerRates = rates.filter((r) => !r.isPeakRate && r.isActive)
+  const peakRate = rates.find((r) => r.isPeakRate && r.isActive)
   const defaultRate = currentlyPeak
     ? (peakRate ?? playerRates[0])
     : (playerRates.find((r) => r.isDefault) ?? playerRates[0])

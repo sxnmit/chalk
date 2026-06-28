@@ -4,6 +4,7 @@ export interface Rate {
   pricePerHour: number
   isDefault: boolean
   isPeakRate: boolean
+  isActive: boolean
 }
 
 export interface TableSession {

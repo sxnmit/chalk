@@ -15,8 +15,6 @@ import {
   endSessionAction,
 } from "@/app/dashboard/actions"
 
-const VENUE_NAME = "Shy Lounge"
-
 function TableCardSkeleton() {
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-border/50 bg-card">
@@ -43,6 +41,7 @@ export default function DashboardPage() {
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
   const [isOwner, setIsOwner] = useState(false)
+  const [venueName, setVenueName] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,10 +55,11 @@ export default function DashboardPage() {
     }, 15000)
 
     loadDashboardData()
-      .then(({ tables, rates, userRole, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
+      .then(({ tables, rates, userRole, venueName: name, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
         setTables(tables)
         setRates(rates)
         setIsOwner(userRole === "owner")
+        setVenueName(name)
         setTodayRevenue(revenue)
         setTodayCompletedSessionsCount(completed)
       })
@@ -134,11 +134,11 @@ export default function DashboardPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <SidebarLayout venueName={VENUE_NAME} isOwner={isOwner} onLogout={handleLogout}>
+    <SidebarLayout venueName={venueName} isOwner={isOwner} onLogout={handleLogout}>
       {(openSidebar) => (
         <>
           <Header
-            venueName={VENUE_NAME}
+            venueName={venueName}
             todayRevenue={todayRevenue}
             activeTables={activeTables}
             completedSessions={todayCompletedSessionsCount}
