@@ -18,13 +18,27 @@ export function SidebarLayout({
   children,
 }: SidebarLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false)
   const openSidebar = useCallback(() => setMobileSidebarOpen(true), [])
   const closeSidebar = useCallback(() => setMobileSidebarOpen(false), [])
+  const toggleDesktopSidebar = useCallback(() => {
+    setDesktopSidebarCollapsed((current) => !current)
+  }, [])
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col lg:flex">
-        <SidebarContent venueName={venueName} isOwner={isOwner} onLogout={onLogout} />
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 hidden flex-col transition-[width] duration-200 lg:flex ${
+          desktopSidebarCollapsed ? "w-20" : "w-56"
+        }`}
+      >
+        <SidebarContent
+          venueName={venueName}
+          isOwner={isOwner}
+          onLogout={onLogout}
+          collapsed={desktopSidebarCollapsed}
+          onToggleCollapsed={toggleDesktopSidebar}
+        />
       </aside>
 
       {mobileSidebarOpen && (
@@ -47,7 +61,13 @@ export function SidebarLayout({
         />
       </div>
 
-      <div className="flex flex-1 flex-col lg:ml-56">{children(openSidebar)}</div>
+      <div
+        className={`flex flex-1 flex-col transition-[margin] duration-200 ${
+          desktopSidebarCollapsed ? "lg:ml-20" : "lg:ml-56"
+        }`}
+      >
+        {children(openSidebar)}
+      </div>
     </div>
   )
 }

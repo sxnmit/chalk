@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Menu } from "lucide-react"
 import { toast } from "sonner"
 import { InviteMemberDialog } from "@/components/billing/invite-member-dialog"
 import { TeamMemberRow, type TeamMember } from "@/components/billing/team-member-row"
+import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,10 +35,9 @@ export default function AdminTeamPage() {
   const [error, setError] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)
   const [removing, setRemoving] = useState(false)
-  const [nowMs, setNowMs] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
-    setNowMs(Date.now())
     const interval = setInterval(() => setNowMs(Date.now()), 60_000)
     return () => clearInterval(interval)
   }, [])
@@ -100,8 +100,27 @@ export default function AdminTeamPage() {
   )
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6">
-      <div className="mx-auto max-w-4xl">
+    <SidebarPageLayout>
+      {(openSidebar) => (
+        <>
+          <header className="sticky top-0 z-30 border-b border-border/50">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
+            <div className="relative flex items-center gap-3 px-4 py-3 sm:px-6">
+              <button
+                onClick={openSidebar}
+                aria-label="Open navigation"
+                className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <span className="text-xl font-bold uppercase tracking-widest text-foreground">
+                Team
+              </span>
+            </div>
+          </header>
+
+          <main className="flex-1 px-4 pb-10 pt-6 text-foreground sm:px-6 xl:px-8">
+            <div className="mx-auto max-w-4xl">
         <Button asChild variant="ghost" className="mb-6">
           <Link href="/dashboard">
             <ArrowLeft />
@@ -196,6 +215,9 @@ export default function AdminTeamPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </main>
+          </main>
+        </>
+      )}
+    </SidebarPageLayout>
   )
 }

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Menu } from "lucide-react"
 import { BillingPortalButton } from "@/components/billing/billing-portal-button"
 import { SubscriptionStatus } from "@/components/billing/subscription-status"
+import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Button } from "@/components/ui/button"
 import type { SubscriptionSummary, VenueRole } from "@/lib/billing/types"
 
@@ -25,8 +26,27 @@ export default function AdminBillingPage() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6">
-      <div className="mx-auto max-w-3xl">
+    <SidebarPageLayout>
+      {(openSidebar) => (
+        <>
+          <header className="sticky top-0 z-30 border-b border-border/50">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
+            <div className="relative flex items-center gap-3 px-4 py-3 sm:px-6">
+              <button
+                onClick={openSidebar}
+                aria-label="Open navigation"
+                className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <span className="text-xl font-bold uppercase tracking-widest text-foreground">
+                Billing
+              </span>
+            </div>
+          </header>
+
+          <main className="flex-1 px-4 pb-10 pt-6 text-foreground sm:px-6 xl:px-8">
+            <div className="mx-auto max-w-3xl">
         <Button asChild variant="ghost" className="mb-6">
           <Link href="/dashboard">
             <ArrowLeft />
@@ -57,7 +77,10 @@ export default function AdminBillingPage() {
             </div>
           </div>
         )}
-      </div>
-    </main>
+            </div>
+          </main>
+        </>
+      )}
+    </SidebarPageLayout>
   )
 }
