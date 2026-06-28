@@ -26,7 +26,6 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
   const [hourlyRate, setHourlyRate] = useState("")
   const [active, setActive] = useState(true)
   const [isDefault, setIsDefault] = useState(false)
-  const [sortOrder, setSortOrder] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,7 +35,6 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
       setHourlyRate(rate ? String(rate.hourly_rate) : "")
       setActive(rate?.active ?? true)
       setIsDefault(rate?.is_default ?? false)
-      setSortOrder(rate?.sort_order !== undefined ? String(rate.sort_order) : "")
       setError(null)
     }
   }, [open, rate])
@@ -58,7 +56,6 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
       active,
       is_default: isDefault,
     }
-    if (sortOrder !== "") body.sort_order = parseInt(sortOrder, 10)
 
     try {
       const url = rate ? `/api/admin/rates/${rate.id}` : "/api/admin/rates"
@@ -114,18 +111,6 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
               onChange={(e) => setHourlyRate(e.target.value)}
               required
               placeholder="25.00"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="rate-order">Sort order</Label>
-            <Input
-              id="rate-order"
-              type="number"
-              min={0}
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              placeholder="Auto"
             />
           </div>
 
