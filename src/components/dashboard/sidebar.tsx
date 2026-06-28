@@ -12,8 +12,8 @@ import {
   CreditCard,
   Users,
   UtensilsCrossed,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 type NavItem = {
@@ -71,18 +71,31 @@ export function SidebarContent({
     <div className="flex h-full flex-col bg-sidebar">
       {/* Logo + wordmark */}
       <div
-        className={`flex items-center border-b border-white/5 py-5 ${
-          collapsed ? "justify-center px-3" : "justify-between gap-3 px-5"
+        className={`flex border-b border-white/5 ${
+          collapsed ? "h-24 flex-col items-end gap-2 px-3 py-4" : "items-center justify-between gap-3 px-5 py-5"
         }`}
       >
-        <Image
-          src="/logo.png"
-          alt="Chalk logo"
-          width={40}
-          height={40}
-          className="h-9 w-auto object-contain"
-          priority
-        />
+        {collapsed ? (
+          <div className="h-8 w-8 overflow-hidden">
+            <Image
+              src="/logo.png"
+              alt="Chalk logo"
+              width={88}
+              height={32}
+              className="h-8 max-w-none object-contain object-left"
+              priority
+            />
+          </div>
+        ) : (
+          <Image
+            src="/logo.png"
+            alt="Chalk logo"
+            width={100}
+            height={36}
+            className="h-9 w-auto object-contain"
+            priority
+          />
+        )}
         {onToggleCollapsed && (
           <button
             type="button"
@@ -90,12 +103,12 @@ export function SidebarContent({
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-expanded={!collapsed}
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-secondary/50 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground lg:flex"
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground lg:flex"
           >
             {collapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
+              <ChevronRight className="h-5 w-5" />
             ) : (
-              <PanelLeftClose className="h-4 w-4" />
+              <ChevronLeft className="h-5 w-5" />
             )}
           </button>
         )}
