@@ -4,13 +4,14 @@ import Image from "next/image"
 import Link from "next/link"
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { AvatarIcon } from "@/components/icons/radix-icons-avatar"
+import { LockClosedIcon } from "@/components/icons/radix-icons-lock-closed"
 import { LightWavesBackground } from "@/components/login/light-waves"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { createClient } from "@/utils/supabase/client"
 
 const CHALK_COLORS = ["#2a7db5", "#1e6a9e", "#3a8dc5", "#1a5a8a", "#0a4a7a"]
+const inputClass =
+  "w-full bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
 
 function SignupForm() {
   const router = useRouter()
@@ -52,23 +53,48 @@ function SignupForm() {
         <h1 className="text-xl font-semibold text-white sm:text-2xl">Create your account</h1>
         <p className="mt-1 text-sm text-white/40">Start your Chalk trial</p>
       </div>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name" className="text-white/80">Name</Label>
-          <Input id="name" value={name} onChange={(event) => setName(event.target.value)} required />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">
+          <AvatarIcon size={20} color="var(--color-primary)" strokeWidth={0.7} className="shrink-0" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Name"
+            required
+            className={inputClass}
+          />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="email" className="text-white/80">Email</Label>
-          <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">
+          <AvatarIcon size={20} color="var(--color-primary)" strokeWidth={0.7} className="shrink-0" />
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email"
+            required
+            className={inputClass}
+          />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password" className="text-white/80">Password</Label>
-          <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} />
+        <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">
+          <LockClosedIcon size={20} color="var(--color-primary)" strokeWidth={0.7} className="shrink-0" />
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Password"
+            required
+            minLength={8}
+            className={inputClass}
+          />
         </div>
-        {error && <p className="text-sm text-red-300">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
+        <button
+          type="submit"
+          disabled={loading}
+          className="mt-2 w-full cursor-pointer rounded-lg bg-primary py-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-colors hover:bg-primary/80 disabled:cursor-not-allowed disabled:bg-primary/40 sm:py-[11px]"
+        >
           {loading ? "Creating..." : "Create account"}
-        </Button>
+        </button>
+        {error && <p className="text-center text-xs text-[#f87171]">{error}</p>}
       </div>
       <p className="mt-6 text-center text-sm text-white/45">
         Already have an account?{" "}
