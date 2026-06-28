@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
-import { LayoutDashboard, Plus, Pencil, Trash2 } from "lucide-react"
+import { LayoutDashboard, Menu, Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { MenuItemFormSheet } from "@/components/ordering/menu-item-form-sheet"
 import type { MenuItem } from "@/components/ordering/menu-item-card"
 import { formatCAD } from "@/lib/format"
@@ -83,8 +84,27 @@ export default function MenuPage() {
   const existingCategories = useMemo(() => Array.from(new Set(items.map((i) => i.category))), [items])
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-6">
+    <SidebarPageLayout>
+      {(openSidebar) => (
+        <>
+          <header className="sticky top-0 z-30 border-b border-border/50">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
+            <div className="relative flex items-center gap-3 px-4 py-3 sm:px-6">
+              <button
+                onClick={openSidebar}
+                aria-label="Open navigation"
+                className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <span className="text-xl font-bold uppercase tracking-widest text-foreground">
+                Menu
+              </span>
+            </div>
+          </header>
+
+          <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
+            <div className="mx-auto max-w-4xl">
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -194,15 +214,18 @@ export default function MenuPage() {
             </Table>
           </div>
         )}
-      </div>
+            </div>
+          </main>
 
-      <MenuItemFormSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        item={editItem}
-        existingCategories={existingCategories}
-        onSaved={load}
-      />
-    </div>
+          <MenuItemFormSheet
+            open={sheetOpen}
+            onOpenChange={setSheetOpen}
+            item={editItem}
+            existingCategories={existingCategories}
+            onSaved={load}
+          />
+        </>
+      )}
+    </SidebarPageLayout>
   )
 }
