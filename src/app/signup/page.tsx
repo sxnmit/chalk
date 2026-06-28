@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { LightWavesBackground } from "@/components/login/light-waves"
@@ -69,6 +70,12 @@ function SignupForm() {
           {loading ? "Creating..." : "Create account"}
         </Button>
       </div>
+      <p className="mt-6 text-center text-sm text-white/45">
+        Already have an account?{" "}
+        <Link href="/login" className="font-medium text-primary transition-colors hover:text-primary/80">
+          Sign in
+        </Link>
+      </p>
     </form>
   )
 }

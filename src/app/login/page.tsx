@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { LightWavesBackground } from "@/components/login/light-waves"
 import { LoginForm } from "@/app/login/functions"
 
@@ -24,6 +25,13 @@ export default function LoginPage() {
           </div>
 
           <LoginForm />
+
+          <p className="mt-6 text-center text-sm text-white/45">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="font-medium text-primary transition-colors hover:text-primary/80">
+              Sign up
+            </Link>
+          </p>
         </div>
       </div>
     </LightWavesBackground>
