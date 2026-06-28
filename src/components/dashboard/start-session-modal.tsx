@@ -5,6 +5,13 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { PoolTable, Rate, isPeakHour, formatCurrency } from "@/lib/pool-types"
 
 export interface StartSessionModalProps {
@@ -70,22 +77,24 @@ export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSe
           {!currentlyPeak && (
             <div className="space-y-2">
               <Label className="text-foreground">Player Type</Label>
-              <div className="grid gap-2">
-                {playerRates.map((rate) => (
-                  <button
-                    key={rate.id}
-                    type="button"
-                    onClick={() => setSelectedRate(rate)}
-                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${selectedRate.id === rate.id
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
-                      }`}
-                  >
-                    <span className="font-medium">{rate.name} Player</span>
-                    <span className="text-sm">{formatCurrency(rate.pricePerHour)}/hr</span>
-                  </button>
-                ))}
-              </div>
+              <Select
+                value={selectedRate.id}
+                onValueChange={(value) => {
+                  const rate = playerRates.find((r) => r.id === value)
+                  if (rate) setSelectedRate(rate)
+                }}
+              >
+                <SelectTrigger className="w-full border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {playerRates.map((rate) => (
+                    <SelectItem key={rate.id} value={rate.id}>
+                      {rate.name} Player — {formatCurrency(rate.pricePerHour)}/hr
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
