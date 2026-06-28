@@ -26,6 +26,7 @@ const TABLE_STATUSES = [
   { value: "maintenance", label: "Maintenance" },
   { value: "retired", label: "Retired" },
 ] as const
+const NO_DEFAULT_RATE = "__none__"
 
 interface Props {
   open: boolean
@@ -46,14 +47,15 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
 
   useEffect(() => {
     if (open) {
+      const venueDefaultRate = rates.find((r) => r.active && r.is_default)
       setName(table?.name ?? "")
       setSize(table?.size ?? "9ft")
       setAdminStatus(table?.admin_status ?? "active")
-      setDefaultRateId(table?.default_rate_id ?? "")
+      setDefaultRateId(table?.default_rate_id ?? venueDefaultRate?.id ?? "")
       setDisplayOrder(table?.display_order !== undefined ? String(table.display_order) : "")
       setError(null)
     }
-  }, [open, table])
+  }, [open, table, rates])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,12 +128,15 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
 
           <div className="space-y-1.5">
             <Label htmlFor="table-default-rate">Default rate</Label>
-            <Select value={defaultRateId} onValueChange={setDefaultRateId}>
+            <Select
+              value={defaultRateId || NO_DEFAULT_RATE}
+              onValueChange={(value) => setDefaultRateId(value === NO_DEFAULT_RATE ? "" : value)}
+            >
               <SelectTrigger id="table-default-rate" className="w-full">
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value={NO_DEFAULT_RATE}>None</SelectItem>
                 {rates.filter((r) => r.active).map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.label} (${r.hourly_rate}/hr)

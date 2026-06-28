@@ -25,6 +25,7 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
   const [label, setLabel] = useState("")
   const [hourlyRate, setHourlyRate] = useState("")
   const [active, setActive] = useState(true)
+  const [isDefault, setIsDefault] = useState(false)
   const [sortOrder, setSortOrder] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +35,7 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
       setLabel(rate?.label ?? "")
       setHourlyRate(rate ? String(rate.hourly_rate) : "")
       setActive(rate?.active ?? true)
+      setIsDefault(rate?.is_default ?? false)
       setSortOrder(rate?.sort_order !== undefined ? String(rate.sort_order) : "")
       setError(null)
     }
@@ -54,6 +56,7 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
       label: label.trim(),
       hourly_rate: parsedRate,
       active,
+      is_default: isDefault,
     }
     if (sortOrder !== "") body.sort_order = parseInt(sortOrder, 10)
 
@@ -137,6 +140,20 @@ export function RateFormSheet({ open, onOpenChange, rate, onSaved }: Props) {
               id="rate-active"
               checked={active}
               onCheckedChange={setActive}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/30 px-4 py-3">
+            <Label htmlFor="rate-default" className="cursor-pointer">
+              Venue default
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                (pre-selected when starting sessions)
+              </span>
+            </Label>
+            <Switch
+              id="rate-default"
+              checked={isDefault}
+              onCheckedChange={setIsDefault}
             />
           </div>
 

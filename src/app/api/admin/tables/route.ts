@@ -25,6 +25,12 @@ export function dbStatusToAdmin(dbStatus: string): "active" | "maintenance" | "r
   return "active"
 }
 
+function adminErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected error"
+  const status = message.includes("Not authenticated") ? 401 : 500
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+}
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -42,8 +48,8 @@ export async function GET() {
     return NextResponse.json(
       (data ?? []).map((t) => ({ ...t, admin_status: dbStatusToAdmin(t.status) }))
     )
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }
 
@@ -56,6 +62,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = CreateSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+
+    if (parsed.data.default_rate_id) {
+      const { data: rate, error: rateError } = await supabase
+        .from("rates")
+        .select("id")
+        .eq("id", parsed.data.default_rate_id)
+        .eq("venue_id", venueId)
+        .maybeSingle()
+      if (rateError) return NextResponse.json({ error: rateError.message }, { status: 500 })
+      if (!rate) return NextResponse.json({ error: "Default rate not found for this venue" }, { status: 400 })
+    }
 
     let displayOrder = parsed.data.display_order
     if (displayOrder === undefined) {
@@ -84,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ...data, admin_status: dbStatusToAdmin(data.status) }, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (error) {
+    return adminErrorResponse(error)
   }
 }

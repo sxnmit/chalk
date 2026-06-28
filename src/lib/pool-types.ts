@@ -20,6 +20,7 @@ export interface PoolTable {
   id: string
   name: string
   tableNumber: number
+  defaultRateId?: string
   session?: TableSession
 }
 

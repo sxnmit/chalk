@@ -197,24 +197,30 @@ export type Database = {
       }
       rates: {
         Row: {
+          active: boolean
           hourly_rate: number
           id: string
           is_default: boolean
           label: string
+          sort_order: number
           venue_id: string
         }
         Insert: {
+          active?: boolean
           hourly_rate: number
           id?: string
           is_default?: boolean
           label: string
+          sort_order?: number
           venue_id: string
         }
         Update: {
+          active?: boolean
           hourly_rate?: number
           id?: string
           is_default?: boolean
           label?: string
+          sort_order?: number
           venue_id?: string
         }
         Relationships: [
@@ -297,6 +303,7 @@ export type Database = {
       }
       tables: {
         Row: {
+          default_rate_id: string | null
           display_order: number
           id: string
           name: string
@@ -305,6 +312,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          default_rate_id?: string | null
           display_order?: number
           id?: string
           name: string
@@ -313,6 +321,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          default_rate_id?: string | null
           display_order?: number
           id?: string
           name?: string
