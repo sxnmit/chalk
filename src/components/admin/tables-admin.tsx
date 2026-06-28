@@ -113,13 +113,10 @@ export function TablesAdmin({ ratesForForm }: Props) {
   const venueDefaultRate = rates.find((r) => r.active && r.is_default)
 
   const rateLabel = (rateId: string | null) => {
-    const fallbackToVenueDefault = !rateId
     const effectiveRateId = rateId ?? venueDefaultRate?.id
     if (!effectiveRateId) return "—"
     const r = rates.find((x) => x.id === effectiveRateId)
-    return r
-      ? `${r.label} ($${r.hourly_rate}/hr)${fallbackToVenueDefault ? " (venue default)" : ""}`
-      : "—"
+    return r ? `${r.label} ($${r.hourly_rate}/hr)` : "—"
   }
 
   return (
