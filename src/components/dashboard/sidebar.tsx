@@ -76,13 +76,13 @@ export function SidebarContent({
         }`}
       >
         {collapsed ? (
-          <div className="h-8 w-8 overflow-hidden">
+          <div className="h-10 w-10 overflow-hidden">
             <Image
               src="/logo.png"
               alt="Chalk logo"
-              width={88}
-              height={32}
-              className="h-8 max-w-none object-contain object-left"
+              width={110}
+              height={40}
+              className="h-10 max-w-none object-contain object-left"
               priority
             />
           </div>
