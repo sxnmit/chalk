@@ -23,7 +23,7 @@ export async function PATCH(
     const admin = createAdminClient()
     const { data: member, error: lookupError } = await admin
       .from("venue_members")
-      .select("id, user_id")
+      .select("id, user_id, role")
       .eq("id", memberId)
       .eq("venue_id", profile.venueId)
       .single()
@@ -31,6 +31,21 @@ export async function PATCH(
 
     if (member.user_id === profile.userId && role !== "owner") {
       return NextResponse.json({ error: "You cannot remove your own owner role" }, { status: 400 })
+    }
+
+    if (member.role === "owner" && role !== "owner") {
+      const { count, error: countError } = await admin
+        .from("venue_members")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", profile.venueId)
+        .eq("role", "owner")
+      if (countError) throw countError
+      if ((count ?? 0) <= 1) {
+        return NextResponse.json(
+          { error: "Cannot demote the last owner — promote another member to owner first" },
+          { status: 400 }
+        )
+      }
     }
 
     const { error } = await admin
