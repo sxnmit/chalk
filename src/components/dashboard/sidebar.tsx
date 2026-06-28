@@ -76,16 +76,16 @@ export function SidebarContent({
         }`}
       >
         {collapsed ? (
-          <div className="h-10 w-10 overflow-hidden">
-            <Image
-              src="/logo.png"
-              alt="Chalk logo"
-              width={110}
-              height={40}
-              className="h-10 max-w-none object-contain object-left"
-              priority
-            />
-          </div>
+          <div
+            role="img"
+            aria-label="Chalk logo"
+            className="h-10 w-10 bg-no-repeat"
+            style={{
+              backgroundImage: "url('/logo.png')",
+              backgroundPosition: "-5px center",
+              backgroundSize: "110px 40px",
+            }}
+          />
         ) : (
           <Image
             src="/logo.png"
