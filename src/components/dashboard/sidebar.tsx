@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BarChart2, LogOut, LayoutGrid, DollarSign, CreditCard, Users } from "lucide-react"
+import { LayoutDashboard, BarChart2, LogOut, LayoutGrid, DollarSign, CreditCard, Users, UtensilsCrossed } from "lucide-react"
 
 type NavItem = {
   key: string
@@ -15,6 +15,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { key: "menu", label: "Menu", icon: UtensilsCrossed, href: "/menu" },
   { key: "revenue", label: "Revenue", icon: BarChart2, href: "/revenue", ownerOnly: true },
   { key: "billing", label: "Billing", icon: CreditCard, href: "/admin/billing", ownerOnly: true },
   { key: "team", label: "Team", icon: Users, href: "/admin/team", ownerOnly: true },
