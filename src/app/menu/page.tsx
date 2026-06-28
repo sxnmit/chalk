@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2 } from "lucide-react"
+import Link from "next/link"
+import { LayoutDashboard, Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -90,11 +91,14 @@ export default function MenuPage() {
             <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-exo2)]">Menu</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Manage items available for ordering</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href="/dashboard">← Dashboard</a>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild className="h-11 px-4">
+              <Link href="/dashboard">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
             </Button>
-            <Button size="sm" onClick={openAdd} className="min-h-[44px]">
+            <Button onClick={openAdd} className="h-11 px-4">
               <Plus className="mr-2 h-4 w-4" />
               Add Item
             </Button>
