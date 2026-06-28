@@ -3,7 +3,18 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BarChart2, LogOut, LayoutGrid, DollarSign, CreditCard, Users, UtensilsCrossed } from "lucide-react"
+import {
+  LayoutDashboard,
+  BarChart2,
+  LogOut,
+  LayoutGrid,
+  DollarSign,
+  CreditCard,
+  Users,
+  UtensilsCrossed,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react"
 
 type NavItem = {
   key: string
@@ -31,6 +42,8 @@ export interface SidebarContentProps {
   isOwner: boolean
   onLogout: () => void
   onClose?: () => void
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
 }
 
 export function SidebarContent({
@@ -38,6 +51,8 @@ export function SidebarContent({
   isOwner,
   onLogout,
   onClose,
+  collapsed = false,
+  onToggleCollapsed,
 }: SidebarContentProps) {
   const pathname = usePathname()
 
@@ -45,7 +60,9 @@ export function SidebarContent({
   const visibleAdminItems = ADMIN_NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner)
 
   const itemClass = (active: boolean) =>
-    `flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${active
+    `flex w-full items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
+      collapsed ? "justify-center px-2" : "gap-3 px-4"
+    } ${active
       ? "bg-primary text-primary-foreground"
       : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
     }`
@@ -53,7 +70,11 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col bg-sidebar">
       {/* Logo + wordmark */}
-      <div className="flex items-center gap-3 border-b border-white/5 px-5 py-5">
+      <div
+        className={`flex items-center border-b border-white/5 py-5 ${
+          collapsed ? "justify-center px-3" : "justify-between gap-3 px-5"
+        }`}
+      >
         <Image
           src="/logo.png"
           alt="Chalk logo"
@@ -62,6 +83,22 @@ export function SidebarContent({
           className="h-9 w-auto object-contain"
           priority
         />
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-secondary/50 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground lg:flex"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -75,18 +112,22 @@ export function SidebarContent({
               href={item.href}
               onClick={onClose}
               className={itemClass(active)}
+              title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
             >
               <Icon className="h-5 w-5 shrink-0" />
-              {item.label}
+              {!collapsed && item.label}
             </Link>
           )
         })}
 
         {visibleAdminItems.length > 0 && (
           <>
-            <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              Admin
-            </p>
+            {!collapsed && (
+              <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Admin
+              </p>
+            )}
             {visibleAdminItems.map((item) => {
               const Icon = item.icon
               const active = pathname.startsWith(item.href)
@@ -96,9 +137,11 @@ export function SidebarContent({
                   href={item.href}
                   onClick={onClose}
                   className={itemClass(active)}
+                  title={collapsed ? item.label : undefined}
+                  aria-label={collapsed ? item.label : undefined}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
-                  {item.label}
+                  {!collapsed && item.label}
                 </Link>
               )
             })}
@@ -107,16 +150,22 @@ export function SidebarContent({
       </nav>
 
       {/* Bottom: venue name + logout */}
-      <div className="border-t border-white/5 px-5 py-5">
-        <p className="mb-3 truncate text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          {venueName}
-        </p>
+      <div className={`border-t border-white/5 py-5 ${collapsed ? "px-3" : "px-5"}`}>
+        {!collapsed && (
+          <p className="mb-3 truncate text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            {venueName}
+          </p>
+        )}
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+          title={collapsed ? "Logout" : undefined}
+          aria-label={collapsed ? "Logout" : undefined}
+          className={`flex w-full items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground ${
+            collapsed ? "justify-center px-2" : "gap-3 px-4"
+          }`}
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          Logout
+          {!collapsed && "Logout"}
         </button>
       </div>
     </div>

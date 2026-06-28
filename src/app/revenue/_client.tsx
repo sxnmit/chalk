@@ -3,13 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { DollarSign, Hash, Clock, Menu, CalendarIcon } from "lucide-react"
 import { type DateRange } from "react-day-picker"
-import { SidebarContent } from "@/components/dashboard/sidebar"
+import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Calendar } from "@/components/ui/calendar"
 import { PopoverRoot, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { logoutAction } from "@/app/login/actions"
 import { loadRevenueData, RevenueData } from "./actions"
-
-const VENUE_NAME = "Shy Lounge"
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -117,7 +114,6 @@ export function RevenuePageClient() {
   const [data, setData] = useState<RevenueData>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const fetchData = useCallback(async (from: Date, to: Date) => {
     setLoading(true)
@@ -151,41 +147,9 @@ export function RevenuePageClient() {
   const maxCount = Math.max(1, ...data.peakHours.map((h) => h.count))
 
   return (
-    <div className="flex min-h-screen bg-background">
-
-      {/* ── Desktop sidebar ──────────────────────────────────────────────────── */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col lg:flex">
-        <SidebarContent
-          venueName={VENUE_NAME}
-          isOwner={true}
-          onLogout={() => logoutAction()}
-        />
-      </aside>
-
-      {/* ── Mobile sidebar overlay ───────────────────────────────────────────── */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* ── Mobile sidebar panel ─────────────────────────────────────────────── */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col lg:hidden transition-transform duration-300 ${
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <SidebarContent
-          venueName={VENUE_NAME}
-          isOwner={true}
-          onLogout={() => logoutAction()}
-          onClose={() => setMobileSidebarOpen(false)}
-        />
-      </div>
-
-      {/* ── Content ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col lg:ml-56">
+    <SidebarPageLayout>
+      {(openSidebar) => (
+        <>
         {/* ── Top bar ────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-30 border-b border-border/50">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
@@ -193,7 +157,7 @@ export function RevenuePageClient() {
 
             {/* Mobile hamburger */}
             <button
-              onClick={() => setMobileSidebarOpen(true)}
+              onClick={openSidebar}
               aria-label="Open navigation"
               className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
             >
@@ -343,7 +307,8 @@ export function RevenuePageClient() {
             </div>
           )}
         </main>
-      </div>
-    </div>
+        </>
+      )}
+    </SidebarPageLayout>
   )
 }
