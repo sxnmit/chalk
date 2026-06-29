@@ -71,22 +71,23 @@ export function SidebarContent({
       {/* Logo + wordmark */}
       <div
         className={`flex border-b border-white/5 ${
-          collapsed ? "h-24 flex-col items-end gap-2 px-3 py-4" : "items-center justify-between gap-3 px-5 py-5"
+          collapsed ? "items-center justify-center px-3 py-5" : "items-center justify-between gap-3 px-5 py-5"
         }`}
       >
         {collapsed ? (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            title="Expand sidebar"
-            aria-label="Chalk logo"
-            className="h-12 w-12 rounded-lg bg-no-repeat transition-colors hover:bg-white/5"
-            style={{
-              backgroundImage: "url('/logo.png')",
-              backgroundPosition: "-6px center",
-              backgroundSize: "132px 48px",
-            }}
-          />
+          <CollapsedTooltip label="Expand sidebar">
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-label="Expand sidebar"
+              className="h-12 w-12 rounded-lg bg-no-repeat transition-colors hover:bg-white/5"
+              style={{
+                backgroundImage: "url('/logo.png')",
+                backgroundPosition: "-6px center",
+                backgroundSize: "132px 48px",
+              }}
+            />
+          </CollapsedTooltip>
         ) : (
           <Image
             src="/logo.png"
@@ -116,18 +117,24 @@ export function SidebarContent({
         {visibleItems.map((item) => {
           const Icon = item.icon
           const active = pathname.startsWith(item.href)
-          return (
+          const link = (
             <Link
               key={item.key}
               href={item.href}
               onClick={onClose}
               className={itemClass(active)}
-              title={collapsed ? item.label : undefined}
               aria-label={collapsed ? item.label : undefined}
             >
               <Icon className="h-5 w-5 shrink-0" />
               {!collapsed && item.label}
             </Link>
+          )
+          return collapsed ? (
+            <CollapsedTooltip key={item.key} label={item.label}>
+              {link}
+            </CollapsedTooltip>
+          ) : (
+            link
           )
         })}
 
@@ -141,18 +148,24 @@ export function SidebarContent({
             {visibleAdminItems.map((item) => {
               const Icon = item.icon
               const active = pathname.startsWith(item.href)
-              return (
+              const link = (
                 <Link
                   key={item.key}
                   href={item.href}
                   onClick={onClose}
                   className={itemClass(active)}
-                  title={collapsed ? item.label : undefined}
                   aria-label={collapsed ? item.label : undefined}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   {!collapsed && item.label}
                 </Link>
+              )
+              return collapsed ? (
+                <CollapsedTooltip key={item.key} label={item.label}>
+                  {link}
+                </CollapsedTooltip>
+              ) : (
+                link
               )
             })}
           </>
@@ -166,18 +179,46 @@ export function SidebarContent({
             {venueName}
           </p>
         )}
-        <button
-          onClick={onLogout}
-          title={collapsed ? "Logout" : undefined}
-          aria-label={collapsed ? "Logout" : undefined}
-          className={`flex w-full items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground ${
-            collapsed ? "justify-center px-2" : "gap-3 px-4"
-          }`}
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && "Logout"}
-        </button>
+        {collapsed ? (
+          <CollapsedTooltip label="Logout">
+            <button
+              onClick={onLogout}
+              aria-label="Logout"
+              className="flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+            </button>
+          </CollapsedTooltip>
+        ) : (
+          <button
+            onClick={onLogout}
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Logout
+          </button>
+        )}
       </div>
+    </div>
+  )
+}
+
+function CollapsedTooltip({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="group/tooltip relative">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-100 group-hover/tooltip:opacity-100"
+      >
+        {label}
+      </span>
     </div>
   )
 }
