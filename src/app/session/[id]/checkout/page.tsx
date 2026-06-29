@@ -91,15 +91,19 @@ export default function CheckoutPage() {
   }
 
   async function handleCashConfirm(amountReceivedCents: number) {
-    const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method: "cash" }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error)
-    setCashOpen(false)
-    router.push(`/session/${sessionId}/receipt?payment_id=${data.payment_id}`)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "cash" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setCashOpen(false)
+      router.push(`/session/${sessionId}/receipt?payment_id=${data.payment_id}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Cash payment failed")
+    }
   }
 
   const returnUrl = typeof window !== "undefined"
