@@ -21,6 +21,7 @@ export async function PATCH(
     const supabase = await createClient()
     const { venueId, role } = await getProfile()
     if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
     const { id } = await params
     const body = await request.json()
     const parsed = UpdateSchema.safeParse(body)
@@ -50,6 +51,7 @@ export async function DELETE(
     const supabase = await createClient()
     const { venueId, role } = await getProfile()
     if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
     const { id } = await params
 
     const { error } = await supabase

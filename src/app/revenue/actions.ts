@@ -64,7 +64,7 @@ async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createCli
 export async function loadRevenueData(from: string, to: string): Promise<RevenueData> {
   const supabase = await createClient()
   const { venueId, role } = await getProfileFromToken(supabase)
-  if (role !== "owner") redirect("/dashboard")
+  if (role !== "owner" && role !== "manager") redirect("/dashboard")
 
   const { data: venue } = await supabase
     .from("venues")

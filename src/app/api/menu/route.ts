@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { venueId, role } = await getProfile()
     if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
     const body = await request.json()
     const parsed = CreateSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
