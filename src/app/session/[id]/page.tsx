@@ -200,7 +200,8 @@ export default function SessionPage() {
           </div>
         </div>
 
-        {/* Live timer card */}
+        {/* Live timer card — pool tables only; tabs have no timer */}
+        {!session.isTab && (
         <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -210,7 +211,7 @@ export default function SessionPage() {
               </span>
               <span className="text-xs font-medium text-primary">LIVE</span>
             </div>
-            {session.playerName && !session.isTab && (
+            {session.playerName && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <User className="h-3.5 w-3.5" />
                 {session.playerName}
@@ -223,15 +224,14 @@ export default function SessionPage() {
             <span className="font-mono text-4xl font-bold text-foreground">{formatDuration(session.startedAt)}</span>
           </div>
 
-          {!session.isTab && (
-            <div className="flex items-center justify-center rounded-lg bg-success/10 py-3">
-              <div className="text-center">
-                <div className="text-xs uppercase tracking-wider text-success/70">Table charge</div>
-                <div className="text-3xl font-bold text-success">{formatCAD(tableAmountCents)}</div>
-              </div>
+          <div className="flex items-center justify-center rounded-lg bg-success/10 py-3">
+            <div className="text-center">
+              <div className="text-xs uppercase tracking-wider text-success/70">Table charge</div>
+              <div className="text-3xl font-bold text-success">{formatCAD(tableAmountCents)}</div>
             </div>
-          )}
+          </div>
         </div>
+        )}
 
         {/* Menu browser */}
         <div className="rounded-xl border border-border/50 bg-card p-4 space-y-3">

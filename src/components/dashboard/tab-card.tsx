@@ -1,22 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Clock, User, ShoppingBag } from "lucide-react"
+import { User, ShoppingBag } from "lucide-react"
 import type { OpenTab } from "@/app/dashboard/actions"
-import { formatDuration, formatTime } from "@/lib/pool-types"
+import { formatTime } from "@/lib/pool-types"
 
 export interface TabCardProps {
   tab: OpenTab
 }
 
 export function TabCard({ tab }: TabCardProps) {
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
   const startTime = new Date(tab.startedAt)
 
   return (
@@ -43,20 +36,12 @@ export function TabCard({ tab }: TabCardProps) {
 
       <div className="flex flex-1 flex-col px-4 pb-4">
         <div className="flex flex-1 flex-col justify-between py-2">
-          <div className="flex flex-col gap-2">
-            {tab.playerName && (
-              <div className="flex items-center gap-2 text-foreground">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{tab.playerName}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-center gap-3">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="font-mono text-5xl font-bold text-foreground">
-                {formatDuration(startTime)}
-              </span>
+          {tab.playerName && (
+            <div className="flex items-center gap-2 text-foreground">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{tab.playerName}</span>
             </div>
-          </div>
+          )}
 
           <div className="my-4 flex flex-1 items-center justify-center rounded-xl bg-primary/5">
             <div className="px-4 py-6 text-center">
