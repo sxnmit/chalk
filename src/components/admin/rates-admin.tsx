@@ -102,7 +102,7 @@ export function RatesAdmin() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold uppercase tracking-widest text-foreground">Rate tiers</h1>
+        <p className="text-sm text-muted-foreground">Configure hourly pricing for your venue.</p>
         <Button onClick={openCreate} size="sm">
           <Plus className="mr-1.5 h-4 w-4" />
           Add rate

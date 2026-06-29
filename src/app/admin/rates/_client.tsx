@@ -34,7 +34,9 @@ export function RatesAdminClient({ venueName }: Props) {
         </header>
 
         <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
-          <RatesAdmin />
+          <div className="mx-auto max-w-4xl">
+            <RatesAdmin />
+          </div>
         </main>
         </>
       )}

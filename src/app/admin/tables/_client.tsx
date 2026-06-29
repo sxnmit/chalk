@@ -34,7 +34,9 @@ export function TablesAdminClient({ venueName }: Props) {
         </header>
 
         <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
-          <TablesAdmin />
+          <div className="mx-auto max-w-4xl">
+            <TablesAdmin />
+          </div>
         </main>
         </>
       )}

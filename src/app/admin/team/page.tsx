@@ -128,10 +128,7 @@ export default function AdminTeamPage() {
           </Link>
         </Button>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="font-heading text-3xl font-medium">Team</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage access for this venue.</p>
-          </div>
+          <p className="text-sm text-muted-foreground">Manage access for this venue.</p>
           {canManage && <InviteMemberDialog onInvited={load} />}
         </div>
 

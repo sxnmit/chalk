@@ -213,6 +213,10 @@ export function RevenuePageClient() {
 
         {/* ── Main content ───────────────────────────────────────────────────── */}
         <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
+          <div className="mx-auto max-w-4xl">
+          <div className="mb-6">
+            <p className="text-sm text-muted-foreground">Track session revenue and peak hours.</p>
+          </div>
           {error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : (
@@ -306,6 +310,7 @@ export function RevenuePageClient() {
 
             </div>
           )}
+          </div>
         </main>
         </>
       )}

@@ -107,10 +107,7 @@ export default function MenuPage() {
             <div className="mx-auto max-w-4xl">
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-exo2)]">Menu</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Manage items available for ordering</p>
-          </div>
+          <p className="text-sm text-muted-foreground">Manage items available for ordering</p>
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild className="h-11 px-4">
               <Link href="/dashboard">
