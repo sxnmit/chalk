@@ -9,6 +9,7 @@ export interface ReceiptData {
   receiptNumber: string
   createdAt: string
   tableName: string
+  isTab?: boolean
   startedAt: string
   endedAt: string
   durationMinutes: number
@@ -53,7 +54,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
       {/* Session info */}
       <div className="space-y-0.5 mb-2">
         <div className="flex justify-between">
-          <span className="text-gray-500">Table</span>
+          <span className="text-gray-500">{data.isTab ? "Tab" : "Table"}</span>
           <span className="font-medium">{data.tableName}</span>
         </div>
         <div className="flex justify-between">
@@ -64,19 +65,23 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
           <span className="text-gray-500">End</span>
           <span>{new Date(data.endedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Duration</span>
-          <span>{formatDuration(data.durationMinutes)}</span>
-        </div>
+        {!data.isTab && (
+          <div className="flex justify-between">
+            <span className="text-gray-500">Duration</span>
+            <span>{formatDuration(data.durationMinutes)}</span>
+          </div>
+        )}
       </div>
 
       <Separator className="bg-gray-300 my-2" />
 
       {/* Table charge */}
-      <div className="flex justify-between mb-1">
-        <span>Table ({formatCAD(data.actualRateCharged * 100)}/hr × {formatDuration(data.durationMinutes)})</span>
-        <span className="font-medium">{formatCAD(data.tableTotalCents)}</span>
-      </div>
+      {!data.isTab && (
+        <div className="flex justify-between mb-1">
+          <span>Table ({formatCAD(data.actualRateCharged * 100)}/hr × {formatDuration(data.durationMinutes)})</span>
+          <span className="font-medium">{formatCAD(data.tableTotalCents)}</span>
+        </div>
+      )}
 
       {/* Order items */}
       {data.orderItems.length > 0 && (

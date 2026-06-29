@@ -64,15 +64,18 @@ export async function GET(
     const tables = session.tables as unknown as { name: string } | null
     const venues = session.venues as unknown as { name: string } | null
 
+    const isTab = session.table_id === null
+
     return NextResponse.json({
       venueName: venues?.name ?? "Venue",
       receiptNumber: paymentId.slice(-8).toUpperCase(),
       createdAt: payment.created_at,
-      tableName: tables?.name ?? "Table",
+      tableName: tables?.name ?? (isTab ? (session.player_name || "Tab") : "Table"),
+      isTab,
       startedAt,
       endedAt,
       durationMinutes,
-      actualRateCharged: Number(session.actual_rate_charged),
+      actualRateCharged: session.actual_rate_charged == null ? 0 : Number(session.actual_rate_charged),
       orderItems: (orderItems ?? []).map((item) => ({
         name: (item.menu_items as unknown as { name: string } | null)?.name ?? "Item",
         quantity: item.quantity,

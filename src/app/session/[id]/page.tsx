@@ -175,7 +175,16 @@ export default function SessionPage() {
 
   const elapsedSeconds = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000)
   const elapsedHours = elapsedSeconds / 3600
-  const tableAmountCents = Math.round(session.actualRateCharged * 100 * elapsedHours)
+  const tableAmountCents = session.isTab
+    ? 0
+    : Math.round(session.actualRateCharged * 100 * elapsedHours)
+
+  const headerTitle = session.isTab
+    ? (session.playerName || "Tab")
+    : (session.tableName ?? "Session")
+  const headerSubtitle = session.isTab
+    ? "Food & drinks tab"
+    : `${session.rateName ?? "Standard"} rate`
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,8 +195,8 @@ export default function SessionPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{session.tableName}</h1>
-            <p className="text-sm text-muted-foreground">{session.rateName} rate</p>
+            <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{headerTitle}</h1>
+            <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
           </div>
         </div>
 
@@ -201,7 +210,7 @@ export default function SessionPage() {
               </span>
               <span className="text-xs font-medium text-primary">LIVE</span>
             </div>
-            {session.playerName && (
+            {session.playerName && !session.isTab && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <User className="h-3.5 w-3.5" />
                 {session.playerName}
@@ -214,12 +223,14 @@ export default function SessionPage() {
             <span className="font-mono text-4xl font-bold text-foreground">{formatDuration(session.startedAt)}</span>
           </div>
 
-          <div className="flex items-center justify-center rounded-lg bg-success/10 py-3">
-            <div className="text-center">
-              <div className="text-xs uppercase tracking-wider text-success/70">Table charge</div>
-              <div className="text-3xl font-bold text-success">{formatCAD(tableAmountCents)}</div>
+          {!session.isTab && (
+            <div className="flex items-center justify-center rounded-lg bg-success/10 py-3">
+              <div className="text-center">
+                <div className="text-xs uppercase tracking-wider text-success/70">Table charge</div>
+                <div className="text-3xl font-bold text-success">{formatCAD(tableAmountCents)}</div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Menu browser */}

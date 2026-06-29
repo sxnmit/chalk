@@ -5,14 +5,15 @@ import { getProfile } from "@/lib/auth"
 
 export interface SessionDetail {
   id: string
-  tableName: string
-  tableId: string
+  tableName: string | null
+  tableId: string | null
   startedAt: string
   endedAt: string | null
   actualRateCharged: number
-  rateName: string
+  rateName: string | null
   playerName: string | null
   venueName: string
+  isTab: boolean
 }
 
 export async function getSessionDetail(sessionId: string): Promise<SessionDetail | null> {
@@ -44,14 +45,15 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
 
   return {
     id: data.id,
-    tableName: tables?.name ?? "Unknown",
+    tableName: tables?.name ?? null,
     tableId: data.table_id,
     startedAt: data.started_at,
     endedAt: data.ended_at,
-    actualRateCharged: Number(data.actual_rate_charged),
-    rateName: rates?.label ?? "Standard",
+    actualRateCharged: data.actual_rate_charged == null ? 0 : Number(data.actual_rate_charged),
+    rateName: rates?.label ?? null,
     playerName: data.player_name,
     venueName: venues?.name ?? "Venue",
+    isTab: data.table_id === null,
   }
 }
 

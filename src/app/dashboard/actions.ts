@@ -69,32 +69,42 @@ async function loadTodaySummaryForVenue(
 
   const { gte, lt } = todayBoundsUTC(venue.timezone)
 
-  const { data: venueTables, error: tablesError } = await supabase
-    .from("tables")
-    .select("id")
-    .eq("venue_id", profile.venue_id)
-  if (tablesError) throw tablesError
-
-  const tableIds = (venueTables ?? []).map((t) => t.id)
-  if (tableIds.length === 0) return { totalRevenue: 0, sessionCount: 0 }
-
+  // Include both table sessions and tabs (table_id null) for this venue.
   const { data: rows, error: sessionsError } = await supabase
     .from("sessions")
-    .select("started_at, ended_at, actual_rate_charged")
-    .in("table_id", tableIds)
+    .select("id, started_at, ended_at, actual_rate_charged")
+    .eq("venue_id", profile.venue_id)
     .not("ended_at", "is", null)
     .gte("started_at", gte)
     .lt("started_at", lt)
   if (sessionsError) throw sessionsError
 
-  let totalRevenue = 0
-  for (const s of rows ?? []) {
-    const hours =
-      (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / (1000 * 60 * 60)
-    totalRevenue += hours * Number(s.actual_rate_charged)
+  const sessions = rows ?? []
+  if (sessions.length === 0) return { totalRevenue: 0, sessionCount: 0 }
+
+  const sessionIds = sessions.map((s) => s.id)
+  const { data: itemRows, error: itemsError } = await supabase
+    .from("order_items")
+    .select("session_id, quantity, price_at_time_cents")
+    .in("session_id", sessionIds)
+  if (itemsError) throw itemsError
+
+  const itemsBySession = new Map<string, number>()
+  for (const i of itemRows ?? []) {
+    const cents = i.quantity * i.price_at_time_cents
+    itemsBySession.set(i.session_id, (itemsBySession.get(i.session_id) ?? 0) + cents)
   }
 
-  return { totalRevenue, sessionCount: (rows ?? []).length }
+  let totalRevenue = 0
+  for (const s of sessions) {
+    const hours =
+      (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / (1000 * 60 * 60)
+    const rate = s.actual_rate_charged == null ? 0 : Number(s.actual_rate_charged)
+    totalRevenue += hours * rate
+    totalRevenue += (itemsBySession.get(s.id) ?? 0) / 100
+  }
+
+  return { totalRevenue, sessionCount: sessions.length }
 }
 
 // Reads venue_id, role, and user id from the JWT. Falls back to a DB lookup
@@ -143,9 +153,16 @@ async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createCli
 
 // ── Public actions ─────────────────────────────────────────────────────────────
 
+export interface OpenTab {
+  id: string
+  playerName: string | null
+  startedAt: string
+}
+
 export async function loadDashboardData(): Promise<{
   tables: PoolTable[]
   rates: Rate[]
+  tabs: OpenTab[]
   userRole: string
   venueName: string
   todayRevenue: number
@@ -162,23 +179,17 @@ export async function loadDashboardData(): Promise<{
     .order("display_order")
   if (tablesError) throw tablesError
 
-  const venueTableIds = (tables ?? []).map((t) => t.id)
-
-  const sessionsQuery = venueTableIds.length > 0
-    ? supabase
-        .from("sessions")
-        .select("id, table_id, rate_id, started_at, player_name")
-        .in("table_id", venueTableIds)
-        .is("ended_at", null)
-    : Promise.resolve({ data: [], error: null })
-
   const [
     { data: sessions, error: sessionsError },
     { data: dbRates, error: ratesError },
     { data: venueRow, error: venueRowError },
     todaySummary,
   ] = await Promise.all([
-    sessionsQuery,
+    supabase
+      .from("sessions")
+      .select("id, table_id, rate_id, started_at, player_name")
+      .eq("venue_id", venueId)
+      .is("ended_at", null),
     supabase
       .from("rates")
       .select("id, label, hourly_rate, is_default, active")
@@ -195,7 +206,9 @@ export async function loadDashboardData(): Promise<{
   // Active rates are selectable for new sessions; deactivated rates are kept
   // only if a currently-active session still references one, so its name and
   // pricing can still render until the session ends.
-  const activeSessionRateIds = new Set((sessions ?? []).map((s) => s.rate_id))
+  const activeSessionRateIds = new Set(
+    (sessions ?? []).map((s) => s.rate_id).filter((id): id is string => !!id),
+  )
   const visibleRates = (dbRates ?? []).filter(
     (r) => r.active || activeSessionRateIds.has(r.id),
   )
@@ -209,7 +222,19 @@ export async function loadDashboardData(): Promise<{
     isActive: r.active,
   }))
 
-  const sessionByTableId = new Map((sessions ?? []).map((s) => [s.table_id, s]))
+  const sessionsList = sessions ?? []
+  const tableSessions = sessionsList.filter((s) => s.table_id !== null)
+  const tabSessions = sessionsList.filter((s) => s.table_id === null)
+
+  const sessionByTableId = new Map(tableSessions.map((s) => [s.table_id, s]))
+
+  const tabs: OpenTab[] = tabSessions
+    .map((s) => ({
+      id: s.id,
+      playerName: s.player_name ?? null,
+      startedAt: s.started_at,
+    }))
+    .sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
 
   const poolTables: PoolTable[] = (tables ?? []).map((t) => {
     const dbSession = sessionByTableId.get(t.id)
@@ -235,11 +260,34 @@ export async function loadDashboardData(): Promise<{
   return {
     tables: poolTables,
     rates,
+    tabs,
     userRole: role,
     venueName: venueRow?.name ?? "",
     todayRevenue: todaySummary.totalRevenue,
     todayCompletedSessionsCount: todaySummary.sessionCount,
   }
+}
+
+export async function startTabAction(playerName?: string): Promise<{ id: string }> {
+  const supabase = await createClient()
+  const { venueId, userId } = await getProfileFromToken(supabase)
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert({
+      table_id: null,
+      rate_id: null,
+      staff_id: userId,
+      venue_id: venueId,
+      started_at: new Date().toISOString(),
+      actual_rate_charged: 0,
+      player_name: playerName?.trim() || null,
+    })
+    .select("id")
+    .single()
+
+  if (error || !data) throw error ?? new Error("Failed to start tab")
+  return { id: data.id }
 }
 
 export async function startSessionAction(
