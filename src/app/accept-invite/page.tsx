@@ -10,10 +10,10 @@ function AcceptInviteContent() {
   const token = searchParams.get("token")
   const [status, setStatus] = useState("Accepting invite...")
   const [error, setError] = useState<string | null>(null)
+  const displayError = token ? error : "Invite token is missing"
 
   useEffect(() => {
     if (!token) {
-      setError("Invite token is missing")
       return
     }
 
@@ -38,9 +38,9 @@ function AcceptInviteContent() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
       <section className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-        <h1 className="font-heading text-2xl font-medium">{error ? "Invite problem" : status}</h1>
-        {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-        {error && (
+        <h1 className="font-heading text-2xl font-medium">{displayError ? "Invite problem" : status}</h1>
+        {displayError && <p className="mt-2 text-sm text-destructive">{displayError}</p>}
+        {displayError && (
           <Button className="mt-5" onClick={() => router.push("/login")}>
             Go to login
           </Button>
