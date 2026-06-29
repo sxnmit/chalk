@@ -8,6 +8,7 @@ import { PlanCard } from "@/components/billing/plan-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { createClient } from "@/utils/supabase/client"
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -35,6 +36,16 @@ export default function OnboardingPage() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Unable to create venue")
+
+      // The user's JWT was minted at signup, before this venue (and the
+      // venue_members row) existed — so `app_metadata.venue_id` is still
+      // empty. Most RLS policies (subscriptions, venue_members, venues)
+      // read that claim, which means every subsequent SSR-client query in
+      // the onboarding/dashboard flow would silently return nothing and
+      // the middleware would bounce /dashboard back to /onboarding.
+      // Force a refresh so the custom_access_token_hook re-runs and bakes
+      // the now-populated venue_id into a fresh access token.
+      await createClient().auth.refreshSession()
       setStep(1)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create venue")

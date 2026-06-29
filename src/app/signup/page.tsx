@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { MailCheck } from "lucide-react"
 import { AvatarIcon } from "@/components/icons/radix-icons-avatar"
 import { EnvelopeClosedIcon } from "@/components/icons/radix-icons-envelope-closed"
 import { LockClosedIcon } from "@/components/icons/radix-icons-lock-closed"
@@ -23,6 +24,11 @@ function SignupForm() {
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [confirmationSent, setConfirmationSent] = useState(false)
+
+  const nextPath = inviteToken
+    ? `/accept-invite?token=${encodeURIComponent(inviteToken)}`
+    : "/onboarding"
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -30,10 +36,18 @@ function SignupForm() {
     setError(null)
 
     const supabase = createClient()
-    const { error: signUpError } = await supabase.auth.signUp({
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+        : undefined
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: {
+        data: { name },
+        emailRedirectTo: redirectTo,
+      },
     })
 
     if (signUpError) {
@@ -42,7 +56,34 @@ function SignupForm() {
       return
     }
 
-    router.push(inviteToken ? `/accept-invite?token=${encodeURIComponent(inviteToken)}` : "/onboarding")
+    // When email confirmation is enabled in Supabase, signUp does not return
+    // a session — the user has to click the link in the confirmation email
+    // before they're authenticated. Show a "check your email" screen instead
+    // of pushing them into onboarding where every API call would 401.
+    if (!data.session) {
+      setConfirmationSent(true)
+      setLoading(false)
+      return
+    }
+
+    router.push(nextPath)
+  }
+
+  if (confirmationSent) {
+    return (
+      <div className="w-[92%] max-w-[420px] rounded-2xl border border-white/[0.08] bg-[rgba(10,10,10,0.45)] px-6 py-8 backdrop-blur-md sm:px-8 sm:py-10">
+        <MailCheck className="mb-4 h-10 w-10 text-primary" />
+        <h1 className="text-xl font-semibold text-white sm:text-2xl">Check your email</h1>
+        <p className="mt-2 text-sm text-white/60">
+          We sent a confirmation link to <span className="text-white">{email}</span>. Click it to
+          verify your address and continue setting up your venue.
+        </p>
+        <p className="mt-4 text-xs text-white/40">
+          The link will bring you back here and drop you straight into onboarding. You can close
+          this tab in the meantime.
+        </p>
+      </div>
+    )
   }
 
   return (
