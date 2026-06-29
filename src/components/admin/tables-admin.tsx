@@ -121,8 +121,11 @@ export function TablesAdmin({ ratesForForm }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Manage your venue&apos;s pool tables.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-3xl font-medium">Tables</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your venue&apos;s pool tables.</p>
+        </div>
         <Button onClick={openCreate} size="sm">
           <Plus className="mr-1.5 h-4 w-4" />
           Add table

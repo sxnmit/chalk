@@ -113,9 +113,6 @@ export default function AdminTeamPage() {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <span className="text-xl font-bold uppercase tracking-widest text-foreground">
-                Team
-              </span>
             </div>
           </header>
 
@@ -128,7 +125,10 @@ export default function AdminTeamPage() {
           </Link>
         </Button>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">Manage access for this venue.</p>
+          <div>
+            <h1 className="font-heading text-3xl font-medium">Team</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage access for this venue.</p>
+          </div>
           {canManage && <InviteMemberDialog onInvited={load} />}
         </div>
 

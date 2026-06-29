@@ -27,9 +27,6 @@ export function TablesAdminClient({ venueName }: Props) {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="flex-1 text-xl font-bold uppercase tracking-widest text-foreground lg:flex-none">
-              Tables
-            </span>
           </div>
         </header>
 

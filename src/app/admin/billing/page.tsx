@@ -39,9 +39,6 @@ export default function AdminBillingPage() {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <span className="text-xl font-bold uppercase tracking-widest text-foreground">
-                Billing
-              </span>
             </div>
           </header>
 
@@ -54,7 +51,8 @@ export default function AdminBillingPage() {
           </Link>
         </Button>
         <div className="mb-6">
-          <p className="text-sm text-muted-foreground">Manage the subscription for this venue.</p>
+          <h1 className="font-heading text-3xl font-medium">Billing</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage the subscription for this venue.</p>
         </div>
 
         {error ? (

@@ -97,9 +97,6 @@ export default function MenuPage() {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <span className="text-xl font-bold uppercase tracking-widest text-foreground">
-                Menu
-              </span>
             </div>
           </header>
 
@@ -107,7 +104,10 @@ export default function MenuPage() {
             <div className="mx-auto max-w-4xl">
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-muted-foreground">Manage items available for ordering</p>
+          <div>
+            <h1 className="font-heading text-3xl font-medium">Menu</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage items available for ordering</p>
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild className="h-11 px-4">
               <Link href="/dashboard">
