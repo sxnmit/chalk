@@ -24,12 +24,12 @@ export function CashConfirmDialog({ open, onOpenChange, grandTotalCents, onConfi
 
   async function handleConfirm() {
     if (!isValid) return
+    setLoading(true)
     const change = amountCents - grandTotalCents
     setChangeDue(change)
     if (change > 0) {
       await new Promise((r) => setTimeout(r, 1800))
     }
-    setLoading(true)
     try {
       await onConfirm(amountCents)
     } finally {
