@@ -84,9 +84,8 @@ export async function POST(request: Request) {
 
   try {
     event = getStripe().webhooks.constructEvent(rawBody, signature, secret)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid signature"
-    return NextResponse.json({ error: message }, { status: 400 })
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
   try {

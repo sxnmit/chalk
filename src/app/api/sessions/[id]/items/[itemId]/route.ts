@@ -45,7 +45,7 @@ export async function PATCH(
         { status: 409 }
       )
     }
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -68,7 +68,7 @@ export async function DELETE(
         p_order_item_id: itemId,
       })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
     return new NextResponse(null, { status: 204 })
   } catch {

@@ -16,7 +16,7 @@ const UpdateSchema = z.object({
 function adminErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error"
   const status = message.includes("Not authenticated") ? 401 : 500
-  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : "Internal server error" }, { status })
 }
 
 export async function PATCH(
@@ -50,7 +50,7 @@ export async function PATCH(
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json(data)
   } catch (error) {
@@ -105,14 +105,14 @@ export async function DELETE(
         .update({ active: false })
         .eq("id", id)
         .eq("venue_id", venueId)
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     } else {
       const { error } = await supabase
         .from("rates")
         .delete()
         .eq("id", id)
         .eq("venue_id", venueId)
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
 
     return new NextResponse(null, { status: 204 })
