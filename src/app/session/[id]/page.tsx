@@ -191,15 +191,16 @@ export default function SessionPage() {
       <div className="mx-auto max-w-2xl px-4 py-6 space-y-4">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push(session.isTab ? "/tabs" : "/dashboard")}
-            aria-label={session.isTab ? "Back to tabs" : "Back to dashboard"}
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            {session.isTab ? "Back to Tabs" : "Back"}
-          </Button>
+          {!session.isTab && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/dashboard")}
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div>
             <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{headerTitle}</h1>
             <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
