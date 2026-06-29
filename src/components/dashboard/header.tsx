@@ -94,14 +94,12 @@ export function Header({
         </div>
 
         {/* ── Desktop (lg+): single row ─────────────────────────────────────── */}
-        <div className="relative hidden min-h-20 items-center justify-end lg:flex lg:py-1">
-          {/* Venue name — centered across the content area */}
-          <span className="pointer-events-none absolute inset-x-0 text-center text-2xl font-bold uppercase tracking-widest text-foreground whitespace-nowrap">
+        <div className="hidden min-h-20 items-center justify-between lg:flex lg:py-1">
+          <span className="text-2xl font-bold uppercase tracking-widest text-foreground whitespace-nowrap">
             {venueName}
           </span>
 
-          {/* Stat chips — pinned right */}
-          <div className="relative z-10 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <StatChip
               icon={<DollarSign className="h-5 w-5" />}
               label="Today's Revenue"
