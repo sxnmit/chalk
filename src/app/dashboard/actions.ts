@@ -153,10 +153,18 @@ async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createCli
 
 // ── Public actions ─────────────────────────────────────────────────────────────
 
+export interface OpenTabItem {
+  name: string
+  quantity: number
+  lineTotalCents: number
+}
+
 export interface OpenTab {
   id: string
   playerName: string | null
   startedAt: string
+  items: OpenTabItem[]
+  totalCents: number
 }
 
 export async function loadDashboardData(): Promise<{
@@ -233,6 +241,8 @@ export async function loadDashboardData(): Promise<{
       id: s.id,
       playerName: s.player_name ?? null,
       startedAt: s.started_at,
+      items: [],
+      totalCents: 0,
     }))
     .sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
 
