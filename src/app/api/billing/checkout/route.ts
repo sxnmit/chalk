@@ -7,7 +7,7 @@ export async function POST() {
     const { profile } = await requireRole(["owner"])
     const price = process.env.STRIPE_PRICE_ID_CHALK_MONTHLY
     if (!price) {
-      return NextResponse.json({ error: "STRIPE_PRICE_ID_CHALK_MONTHLY is not set" }, { status: 500 })
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
 
     const subscription = await loadSubscriptionSummary(profile.venueId)

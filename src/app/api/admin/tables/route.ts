@@ -30,7 +30,7 @@ export function dbStatusToAdmin(dbStatus: string): "active" | "maintenance" | "r
 function adminErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error"
   const status = message.includes("Not authenticated") ? 401 : 500
-  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : "Internal server error" }, { status })
 }
 
 export async function GET() {
@@ -45,7 +45,7 @@ export async function GET() {
       .eq("venue_id", venueId)
       .order("display_order")
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
     return NextResponse.json(
       (data ?? []).map((t) => ({ ...t, admin_status: dbStatusToAdmin(t.status) }))
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     return NextResponse.json({ ...data, admin_status: dbStatusToAdmin(data.status) }, { status: 201 })
   } catch (error) {
     return adminErrorResponse(error)

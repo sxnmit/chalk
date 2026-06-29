@@ -100,7 +100,7 @@ export async function POST(
         .select("id")
         .single()
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
       await closeSession(supabase, venueId, sessionId, now)
       return NextResponse.json({ ok: true, payment_id: data.id })
@@ -155,9 +155,8 @@ export async function POST(
 
     await closeSession(supabase, venueId, sessionId, now)
     return NextResponse.json({ ok: true, payment_id: paymentId })
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error"
-    return NextResponse.json({ error: msg }, { status: 401 })
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 }
 

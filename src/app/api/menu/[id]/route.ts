@@ -35,7 +35,7 @@ export async function PATCH(
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json(data)
   } catch {
@@ -60,7 +60,7 @@ export async function DELETE(
       .eq("id", id)
       .eq("venue_id", venueId)
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     return new NextResponse(null, { status: 204 })
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

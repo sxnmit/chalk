@@ -16,7 +16,7 @@ const CreateSchema = z.object({
 function adminErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error"
   const status = message.includes("Not authenticated") ? 401 : 500
-  return NextResponse.json({ error: status === 401 ? "Unauthorized" : message }, { status })
+  return NextResponse.json({ error: status === 401 ? "Unauthorized" : "Internal server error" }, { status })
 }
 
 export async function GET() {
@@ -32,7 +32,7 @@ export async function GET() {
       .order("sort_order")
       .order("hourly_rate")
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     return NextResponse.json(data ?? [])
   } catch (error) {
     return adminErrorResponse(error)
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
     return adminErrorResponse(error)
