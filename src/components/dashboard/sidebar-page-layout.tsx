@@ -12,6 +12,7 @@ interface SidebarPageLayoutProps {
 
 export function SidebarPageLayout({ children }: SidebarPageLayoutProps) {
   const [venueName, setVenueName] = useState("Venue")
+  const [isAdmin, setIsAdmin] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export function SidebarPageLayout({ children }: SidebarPageLayoutProps) {
       .then((context) => {
         if (cancelled) return
         setVenueName(context.venueName)
+        setIsAdmin(context.isAdmin)
         setIsOwner(context.isOwner)
       })
       .catch((error) => {
@@ -37,7 +39,7 @@ export function SidebarPageLayout({ children }: SidebarPageLayoutProps) {
   }, [])
 
   return (
-    <SidebarLayout venueName={venueName} isOwner={isOwner} onLogout={handleLogout}>
+    <SidebarLayout venueName={venueName} isAdmin={isAdmin} isOwner={isOwner} onLogout={handleLogout}>
       {children}
     </SidebarLayout>
   )

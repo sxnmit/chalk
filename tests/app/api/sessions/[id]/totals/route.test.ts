@@ -11,7 +11,7 @@ vi.mock("next/server", () => ({
 }))
 vi.mock("@/utils/supabase/server", () => ({ createClient: vi.fn() }))
 
-import { GET } from "./route"
+import { GET } from "@/app/api/sessions/[id]/totals/route"
 import { createClient } from "@/utils/supabase/server"
 
 const mockedCreateClient = vi.mocked(createClient)

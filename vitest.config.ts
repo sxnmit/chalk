@@ -13,7 +13,7 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    include: ["tests/**/*.{test,spec}.{ts,tsx}"],
     // Pin a stable timezone so date-based billing tests are deterministic
     // regardless of where they run (CI, contributor laptops, etc.).
     env: {

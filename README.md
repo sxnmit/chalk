@@ -95,10 +95,10 @@ The current app supports both the original Shy Lounge pilot path and self-serve 
 | Role | Current capabilities |
 |---|---|
 | Owner | Dashboard, ordering, checkout, revenue, billing, team management, tables/rates admin, menu management |
-| Manager | Dashboard, ordering, checkout, tables/rates admin, team read access |
+| Manager | Dashboard, ordering, checkout, tables/rates admin, menu management, team read access |
 | Staff | Dashboard, ordering, checkout |
 
-Known caveat: menu item mutation APIs are venue-scoped but currently do not enforce owner/manager role checks.
+Menu management (create/update/delete on `/api/menu`) is gated to owner/manager; read access (`GET`) is open to all staff.
 
 ---
 

@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [venueName, setVenueName] = useState("")
   const [loading, setLoading] = useState(true)
@@ -58,6 +59,7 @@ export default function DashboardPage() {
       .then(({ tables, rates, userRole, venueName: name, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
         setTables(tables)
         setRates(rates)
+        setIsAdmin(userRole === "owner" || userRole === "manager")
         setIsOwner(userRole === "owner")
         setVenueName(name)
         setTodayRevenue(revenue)
@@ -134,7 +136,7 @@ export default function DashboardPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <SidebarLayout venueName={venueName} isOwner={isOwner} onLogout={handleLogout}>
+    <SidebarLayout venueName={venueName} isAdmin={isAdmin} isOwner={isOwner} onLogout={handleLogout}>
       {(openSidebar) => (
         <>
           <Header
@@ -157,7 +159,7 @@ export default function DashboardPage() {
               </div>
             ) : error ? (
               <p className="text-center text-sm text-destructive">{error}</p>
-            ) : isOwner && (rates.length === 0 || tables.length === 0) ? (
+            ) : isAdmin && (rates.length === 0 || tables.length === 0) ? (
               <div className="flex flex-col items-center gap-4 py-16 text-center">
                 <p className="text-sm text-muted-foreground">
                   Get started by setting up your venue

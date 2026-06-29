@@ -32,7 +32,7 @@ users (
   id uuid primary key references auth.users(id),
   venue_id uuid references venues(id),
   name text,
-  role text, -- 'owner' or 'staff'
+  role text, -- 'owner', 'manager', or 'staff' (legacy; multi-venue membership lives in venue_members)
   created_at timestamptz
 )
 

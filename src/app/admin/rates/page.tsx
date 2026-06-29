@@ -23,5 +23,5 @@ export default async function AdminRatesPage() {
     .eq("id", profile.venueId)
     .single()
 
-  return <RatesAdminClient venueName={venue?.name ?? "Venue"} />
+  return <RatesAdminClient venueName={venue?.name ?? "Venue"} isOwner={profile.role === "owner"} />
 }

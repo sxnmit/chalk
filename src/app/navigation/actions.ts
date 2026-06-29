@@ -15,6 +15,7 @@ export async function loadNavigationContext() {
 
   return {
     venueName: venue?.name ?? "Venue",
-    isOwner: profile.role === "owner" || profile.role === "manager",
+    isAdmin: profile.role === "owner" || profile.role === "manager",
+    isOwner: profile.role === "owner",
   }
 }
