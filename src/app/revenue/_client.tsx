@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { DollarSign, Hash, Clock, Menu, CalendarIcon } from "lucide-react"
+import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Calendar } from "@/components/ui/calendar"
@@ -22,12 +22,10 @@ function daysAgo(n: number): Date {
   return d
 }
 
-function toISO(d: Date): string { return d.toISOString() }
-
-/** Exclusive end: midnight of the day after `d`. */
-function exclusiveEnd(d: Date): string {
-  const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
-  return next.toISOString()
+/** Plain `YYYY-MM-DD` for the picked calendar day, with no timezone shift. */
+function fmtISODate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 function fmtShort(d: Date): string {
@@ -56,7 +54,15 @@ const PRESETS = [
 // ── Formatters ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(n: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return n.toLocaleString("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    currencyDisplay: "narrowSymbol",
+  })
+}
+
+function formatMethod(method: string): string {
+  return method.charAt(0).toUpperCase() + method.slice(1)
 }
 
 function formatAvgDuration(minutes: number): string {
@@ -95,12 +101,28 @@ function StatChip({ icon, label, value, highlight = false }: StatChipProps) {
   )
 }
 
+// ── Breakdown row ──────────────────────────────────────────────────────────────
+
+function BreakdownRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between px-5 py-3.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="tabular-nums font-medium text-foreground">{value}</dd>
+    </div>
+  )
+}
+
 // ── Empty state ────────────────────────────────────────────────────────────────
 
 const EMPTY: RevenueData = {
   totalRevenue: 0,
+  tableRevenue: 0,
+  itemsRevenue: 0,
+  taxCollected: 0,
+  tipsCollected: 0,
   sessionCount: 0,
   avgSessionMinutes: 0,
+  byMethod: [],
   peakHours: new Array(24).fill(0).map((_, hour) => ({ hour, count: 0 })),
   tierBreakdown: [],
 }
@@ -119,7 +141,7 @@ export function RevenuePageClient() {
     setLoading(true)
     setError(null)
     try {
-      const result = await loadRevenueData(toISO(from), exclusiveEnd(to))
+      const result = await loadRevenueData(fmtISODate(from), fmtISODate(to))
       setData(result)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load revenue data.")
@@ -214,6 +236,51 @@ export function RevenuePageClient() {
                 <StatChip icon={<Clock className="h-6 w-6" />} label="Avg Session" value={formatAvgDuration(data.avgSessionMinutes)} />
               </div>
 
+              {/* Revenue breakdown + payment methods */}
+              <div className="grid gap-3 lg:grid-cols-2">
+                {/* Where the money came from */}
+                <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+                  <div className="border-b border-border/50 px-5 py-4">
+                    <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Breakdown</h2>
+                  </div>
+                  <dl className="divide-y divide-border/20">
+                    <BreakdownRow label="Table time" value={formatCurrency(data.tableRevenue)} />
+                    <BreakdownRow label="Food & drink" value={formatCurrency(data.itemsRevenue)} />
+                    <BreakdownRow label="Tax" value={formatCurrency(data.taxCollected)} />
+                    <BreakdownRow label="Tips" value={formatCurrency(data.tipsCollected)} />
+                    <div className="flex items-center justify-between bg-secondary/20 px-5 py-4">
+                      <dt className="text-sm font-semibold text-foreground">Total collected</dt>
+                      <dd className="tabular-nums text-lg font-bold text-success">{formatCurrency(data.totalRevenue)}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                {/* How they paid */}
+                <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+                  <div className="border-b border-border/50 px-5 py-4">
+                    <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Payment Methods</h2>
+                  </div>
+                  {data.byMethod.length === 0 ? (
+                    <p className="px-5 py-10 text-center text-sm text-muted-foreground">No payments in this period.</p>
+                  ) : (
+                    <dl className="divide-y divide-border/20">
+                      {data.byMethod.map((m) => (
+                        <div key={m.method} className="flex items-center justify-between px-5 py-3.5">
+                          <dt className="flex items-center gap-3 text-sm font-medium text-foreground">
+                            <span className="text-muted-foreground">
+                              {m.method === "cash" ? <Banknote className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                            </span>
+                            {formatMethod(m.method)}
+                            <span className="text-xs text-muted-foreground">({m.count})</span>
+                          </dt>
+                          <dd className="tabular-nums font-semibold text-success">{formatCurrency(m.revenue)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              </div>
+
               {/* Peak hours chart */}
               <div className="rounded-xl border border-border/50 bg-card p-5">
                 <h2 className="mb-5 text-sm font-semibold uppercase tracking-widest text-muted-foreground">Peak Hours</h2>
@@ -256,7 +323,7 @@ export function RevenuePageClient() {
               {/* Rate tier breakdown */}
               <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
                 <div className="border-b border-border/50 px-5 py-4">
-                  <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">By Rate Tier</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Table Revenue by Rate Tier</h2>
                 </div>
                 {data.tierBreakdown.length === 0 ? (
                   <p className="px-5 py-10 text-center text-sm text-muted-foreground">No completed sessions in this period.</p>
@@ -285,7 +352,7 @@ export function RevenuePageClient() {
                           {data.tierBreakdown.reduce((s, t) => s + t.sessionCount, 0)}
                         </td>
                         <td className="px-5 py-4 text-right tabular-nums text-xl font-bold text-success">
-                          {formatCurrency(data.totalRevenue)}
+                          {formatCurrency(data.tableRevenue)}
                         </td>
                       </tr>
                     </tfoot>

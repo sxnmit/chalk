@@ -2,68 +2,37 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
+import { getProfile } from "@/lib/auth"
+import { businessDayRangeUTC } from "@/lib/business-day"
 
 export interface RevenueData {
-  totalRevenue: number
-  sessionCount: number
+  totalRevenue: number        // grand total collected (table + items + tax + tip)
+  tableRevenue: number        // pool table time
+  itemsRevenue: number        // food & drink
+  taxCollected: number
+  tipsCollected: number
+  sessionCount: number        // number of completed (paid) sessions
   avgSessionMinutes: number
+  byMethod: { method: string; count: number; revenue: number }[]
   peakHours: { hour: number; count: number }[]
   tierBreakdown: { label: string; sessionCount: number; revenue: number }[]
 }
 
-// Reads venue_id and role from the JWT. Falls back to a DB lookup
-// (venue_members → users) when claims are absent (e.g. token pre-dates the hook).
-async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) redirect("/login")
-
-  const { data: { session } } = await supabase.auth.getSession()
-
-  let venueId: string | undefined
-  let role: string | undefined
-
-  if (session?.access_token) {
-    const payload = JSON.parse(
-      Buffer.from(session.access_token.split(".")[1], "base64url").toString()
-    )
-    venueId = payload.app_metadata?.venue_id as string | undefined
-    role = payload.app_metadata?.role as string | undefined
-  }
-
-  if (!venueId) {
-    const { data: member } = await supabase
-      .from("venue_members")
-      .select("venue_id, role")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle()
-
-    if (member) {
-      venueId = member.venue_id
-      role = member.role
-    } else {
-      const { data: dbUser } = await supabase
-        .from("users")
-        .select("venue_id, role")
-        .eq("id", user.id)
-        .maybeSingle()
-
-      if (dbUser) {
-        venueId = dbUser.venue_id
-        role = dbUser.role
-      }
-    }
-  }
-
-  if (!venueId) throw new Error("User has no venue — ensure onboarding is complete")
-
-  return { venueId, role: role ?? "staff" }
+interface SessionEmbed {
+  started_at: string
+  ended_at: string | null
+  rates: { label: string } | null
 }
 
+/**
+ * Revenue for a venue over a date range, sourced from the `payments` table —
+ * the record of money actually collected. `from` and `to` are plain
+ * `YYYY-MM-DD` calendar dates (inclusive); each day runs 3am→3am venue-local,
+ * matching the dashboard's "today" definition.
+ */
 export async function loadRevenueData(from: string, to: string): Promise<RevenueData> {
   const supabase = await createClient()
-  const { venueId, role } = await getProfileFromToken(supabase)
+  const { venueId, role } = await getProfile()
   if (role !== "owner" && role !== "manager") redirect("/dashboard")
 
   const { data: venue } = await supabase
@@ -73,72 +42,87 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
     .single()
 
   const timezone = venue?.timezone ?? "UTC"
+  const { gte, lt } = businessDayRangeUTC(from, to, timezone)
 
-  const { data: tables } = await supabase
-    .from("tables")
-    .select("id")
+  // Only succeeded payments count as revenue. Filter by the session's start
+  // time (inner-joined) so the range matches what staff see per business day.
+  const { data: payments, error } = await supabase
+    .from("payments")
+    .select("grand_total_cents, table_total_cents, items_total_cents, tax_cents, tip_cents, method, sessions!inner(started_at, ended_at, rates(label))")
     .eq("venue_id", venueId)
-
-  const tableIds = (tables ?? []).map((t) => t.id)
-  if (tableIds.length === 0) return emptyData()
-
-  const { data: sessions, error } = await supabase
-    .from("sessions")
-    .select("id, started_at, ended_at, actual_rate_charged, rates(label)")
-    .in("table_id", tableIds)
-    .not("ended_at", "is", null)
-    .gte("started_at", from)
-    .lt("started_at", to)
+    .eq("status", "succeeded")
+    .gte("sessions.started_at", gte)
+    .lt("sessions.started_at", lt)
 
   if (error) throw error
 
-  const rows = sessions ?? []
+  const rows = payments ?? []
 
   let totalRevenue = 0
+  let tableRevenue = 0
+  let itemsRevenue = 0
+  let taxCollected = 0
+  let tipsCollected = 0
   let totalMinutes = 0
+  let durationCount = 0
+
   const hourCounts = new Array(24).fill(0)
+  const methodMap = new Map<string, { count: number; revenue: number }>()
   const tierMap = new Map<string, { sessionCount: number; revenue: number }>()
 
-  for (const s of rows) {
-    if (!s.ended_at) continue
+  const hourFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone, hour: "2-digit", hourCycle: "h23",
+  })
+  const localHour = (ms: number) =>
+    parseInt(hourFmt.formatToParts(new Date(ms)).find((x) => x.type === "hour")?.value ?? "0", 10)
 
-    const startMs = new Date(s.started_at).getTime()
-    const endMs = new Date(s.ended_at).getTime()
-    const hours = (endMs - startMs) / (1000 * 60 * 60)
-    const revenue = hours * Number(s.actual_rate_charged)
+  for (const p of rows) {
+    const session = p.sessions as unknown as SessionEmbed | null
 
-    totalRevenue += revenue
-    totalMinutes += hours * 60
+    totalRevenue += p.grand_total_cents
+    tableRevenue += p.table_total_cents
+    itemsRevenue += p.items_total_cents
+    taxCollected += p.tax_cents
+    tipsCollected += p.tip_cents
 
-    // Venue-local hour for peak hours chart
-    const hourStr =
-      new Intl.DateTimeFormat("en-US", { timeZone: timezone, hour: "2-digit", hour12: false })
-        .formatToParts(new Date(s.started_at))
-        .find((p) => p.type === "hour")?.value ?? "0"
-    hourCounts[parseInt(hourStr, 10)]++
+    const m = methodMap.get(p.method) ?? { count: 0, revenue: 0 }
+    methodMap.set(p.method, { count: m.count + 1, revenue: m.revenue + p.grand_total_cents })
 
-    const label = (s.rates as unknown as { label: string } | null)?.label ?? "Other"
-    const prev = tierMap.get(label) ?? { sessionCount: 0, revenue: 0 }
-    tierMap.set(label, { sessionCount: prev.sessionCount + 1, revenue: prev.revenue + revenue })
+    if (session?.started_at && session.ended_at) {
+      const sMs = new Date(session.started_at).getTime()
+      const eMs = new Date(session.ended_at).getTime()
+      totalMinutes += (eMs - sMs) / 60000
+      durationCount++
+
+      // Occupancy: count every active hour-slot (anchored to start) by its
+      // venue-local hour, so a long session weights the hours it actually spans.
+      for (let cursor = sMs; cursor < eMs; cursor += 60 * 60 * 1000) {
+        hourCounts[localHour(cursor)]++
+      }
+    }
+
+    // Rate tiers describe table pricing, so attribute table revenue (not food/tip).
+    const label = session?.rates?.label ?? "Other"
+    const tier = tierMap.get(label) ?? { sessionCount: 0, revenue: 0 }
+    tierMap.set(label, { sessionCount: tier.sessionCount + 1, revenue: tier.revenue + p.table_total_cents })
   }
 
+  const toDollars = (cents: number) => cents / 100
+
   return {
-    totalRevenue,
+    totalRevenue: toDollars(totalRevenue),
+    tableRevenue: toDollars(tableRevenue),
+    itemsRevenue: toDollars(itemsRevenue),
+    taxCollected: toDollars(taxCollected),
+    tipsCollected: toDollars(tipsCollected),
     sessionCount: rows.length,
-    avgSessionMinutes: rows.length > 0 ? totalMinutes / rows.length : 0,
+    avgSessionMinutes: durationCount > 0 ? totalMinutes / durationCount : 0,
+    byMethod: [...methodMap.entries()]
+      .map(([method, d]) => ({ method, count: d.count, revenue: toDollars(d.revenue) }))
+      .sort((a, b) => b.revenue - a.revenue),
     peakHours: hourCounts.map((count, hour) => ({ hour, count })),
     tierBreakdown: [...tierMap.entries()]
-      .map(([label, d]) => ({ label, ...d }))
+      .map(([label, d]) => ({ label, sessionCount: d.sessionCount, revenue: toDollars(d.revenue) }))
       .sort((a, b) => b.revenue - a.revenue),
-  }
-}
-
-function emptyData(): RevenueData {
-  return {
-    totalRevenue: 0,
-    sessionCount: 0,
-    avgSessionMinutes: 0,
-    peakHours: new Array(24).fill(0).map((_, hour) => ({ hour, count: 0 })),
-    tierBreakdown: [],
   }
 }

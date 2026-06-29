@@ -2,57 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server"
 import { Rate, PoolTable, TableSession } from "@/lib/pool-types"
-
-// ── Today bounds helper ────────────────────────────────────────────────────────
-// Returns the UTC start/end of the current business day (3am→3am local).
-
-function todayBoundsUTC(timezone: string): { gte: string; lt: string } {
-  const now = new Date()
-  const dayMs = 24 * 60 * 60 * 1000
-  const cutoffHour = 3
-
-  const dateStringInTz = (d: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d)
-
-  const hourInTz = (d: Date) => {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "2-digit",
-      hour12: false,
-    }).formatToParts(d)
-    return parseInt(parts.find((p) => p.type === "hour")?.value ?? "00", 10)
-  }
-
-  const businessDate =
-    hourInTz(now) < cutoffHour
-      ? dateStringInTz(new Date(now.getTime() - dayMs))
-      : dateStringInTz(now)
-
-  const partsAt = (d: Date, tz: string) =>
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-      hour12: false,
-    })
-      .formatToParts(d)
-      .reduce<Record<string, number>>((acc, { type, value }) => {
-        if (type !== "literal") acc[type] = parseInt(value, 10)
-        return acc
-      }, {})
-
-  const asUTC = (p: Record<string, number>) =>
-    Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
-
-  const boundaryBase = new Date(`${businessDate}T0${cutoffHour}:00:00Z`)
-  const offsetMs = asUTC(partsAt(boundaryBase, "UTC")) - asUTC(partsAt(boundaryBase, timezone))
-  const startMs = boundaryBase.getTime() + offsetMs
-
-  return {
-    gte: new Date(startMs).toISOString(),
-    lt: new Date(startMs + dayMs).toISOString(),
-  }
-}
+import { todayBoundsUTC } from "@/lib/business-day"
 
 // ── Today summary (for dashboard header chips) ─────────────────────────────────
 
