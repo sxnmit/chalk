@@ -5,9 +5,11 @@ import { getProfile } from "@/lib/auth"
 
 const ADMIN_ROLES = ["owner", "manager"]
 
+const VALID_SIZES = ["9ft", "bar_box"] as const
+
 const CreateSchema = z.object({
   name: z.string().min(1).max(50),
-  size: z.string().min(1).max(50),
+  size: z.enum(VALID_SIZES),
   admin_status: z.enum(["active", "maintenance", "retired"]).default("active"),
   display_order: z.number().int().min(0).optional(),
   default_rate_id: z.string().uuid().nullable().optional(),

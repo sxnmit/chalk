@@ -6,9 +6,11 @@ import { dbStatusToAdmin } from "../route"
 
 const ADMIN_ROLES = ["owner", "manager"]
 
+const VALID_SIZES = ["9ft", "bar_box"] as const
+
 const UpdateSchema = z.object({
   name: z.string().min(1).max(50).optional(),
-  size: z.string().min(1).max(50).optional(),
+  size: z.enum(VALID_SIZES).optional(),
   admin_status: z.enum(["active", "maintenance", "retired"]).optional(),
   display_order: z.number().int().min(0).optional(),
   default_rate_id: z.string().uuid().nullable().optional(),
