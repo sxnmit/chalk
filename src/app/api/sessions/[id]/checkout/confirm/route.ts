@@ -3,6 +3,7 @@ import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 import { getStripe } from "@/lib/stripe"
+import { sessionTableTotalCents } from "@/lib/billing-table"
 
 const ConfirmSchema = z.object({
   method: z.enum(["card", "cash"]),
@@ -33,8 +34,9 @@ export async function POST(
     if (sessionErr || !session) return NextResponse.json({ error: "Session not found" }, { status: 404 })
 
     const now = new Date()
-    const elapsedHours = (now.getTime() - new Date(session.started_at).getTime()) / (1000 * 60 * 60)
-    const tableTotalCents = Math.round(Number(session.actual_rate_charged) * 100 * elapsedHours)
+    const tableTotalCents = await sessionTableTotalCents(
+      supabase, venueId, session.started_at, Number(session.actual_rate_charged), now.getTime(),
+    )
 
     const { data: items } = await supabase
       .from("order_items")

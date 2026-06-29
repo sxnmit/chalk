@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 import { getStripe } from "@/lib/stripe"
+import { sessionTableTotalCents } from "@/lib/billing-table"
 
 export async function POST(
   _request: NextRequest,
@@ -26,8 +27,9 @@ export async function POST(
 
     // Compute totals
     const now = new Date()
-    const elapsedHours = (now.getTime() - new Date(session.started_at).getTime()) / (1000 * 60 * 60)
-    const tableTotalCents = Math.round(Number(session.actual_rate_charged) * 100 * elapsedHours)
+    const tableTotalCents = await sessionTableTotalCents(
+      supabase, venueId, session.started_at, Number(session.actual_rate_charged), now.getTime(),
+    )
 
     const { data: items } = await supabase
       .from("order_items")

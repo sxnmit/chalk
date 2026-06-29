@@ -1,20 +1,16 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/utils/supabase/server"
+import { getProfile } from "@/lib/auth"
 import { RevenuePageClient } from "./_client"
 
 export default async function RevenuePage() {
-  const supabase = await createClient()
+  let role: string
+  try {
+    role = (await getProfile()).role
+  } catch {
+    redirect("/login")
+  }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || profile.role !== "owner") redirect("/dashboard")
+  if (role !== "owner") redirect("/dashboard")
 
   return <RevenuePageClient />
 }

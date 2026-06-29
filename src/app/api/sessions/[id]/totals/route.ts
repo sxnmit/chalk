@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
+import { sessionTableTotalCents } from "@/lib/billing-table"
 
 export async function GET(
   _request: NextRequest,
@@ -29,9 +30,9 @@ export async function GET(
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 })
 
     const now = new Date()
-    const started = new Date(session.started_at)
-    const elapsedHours = (now.getTime() - started.getTime()) / (1000 * 60 * 60)
-    const tableTotalCents = Math.round(Number(session.actual_rate_charged) * 100 * elapsedHours)
+    const tableTotalCents = await sessionTableTotalCents(
+      supabase, venueId, session.started_at, Number(session.actual_rate_charged), now.getTime(),
+    )
 
     const orderItems = (items ?? []).map((item) => ({
       id: item.id,
