@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
-import { Header } from "@/components/dashboard/header"
+import { Header, StatBar } from "@/components/dashboard/header"
 import { SidebarLayout } from "@/components/dashboard/sidebar-layout"
 import { TableCard } from "@/components/dashboard/table-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
@@ -139,13 +139,16 @@ export default function DashboardPage() {
         <>
           <Header
             venueName={venueName}
-            todayRevenue={todayRevenue}
-            activeTables={activeTables}
-            completedSessions={todayCompletedSessionsCount}
             onOpenSidebar={openSidebar}
           />
 
-          <main className="flex-1 px-4 pb-8 pt-6 sm:px-6 xl:px-8">
+          <StatBar
+            todayRevenue={todayRevenue}
+            activeTables={activeTables}
+            completedSessions={todayCompletedSessionsCount}
+          />
+
+          <main className="flex-1 px-4 pb-8 pt-4 sm:px-6 xl:px-8">
             {loading ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <TableCardSkeleton />

@@ -35,91 +35,69 @@ function StatChip({ icon, label, value, highlight = false }: StatChipProps) {
 
 export interface HeaderProps {
   venueName: string
-  todayRevenue: number
-  activeTables: number
-  completedSessions: number
   onOpenSidebar: () => void
 }
 
 export function Header({
   venueName,
-  todayRevenue,
-  activeTables,
-  completedSessions,
   onOpenSidebar,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-border/50">
-      {/* Blur backdrop */}
       <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
 
       <div className="relative px-4 py-3 sm:px-6">
+        {/* Mobile: hamburger + venue name */}
+        <div className="flex items-center gap-3 lg:hidden">
+          <button
+            onClick={onOpenSidebar}
+            aria-label="Open navigation"
+            className="touch-manipulation flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
 
-        {/* ── Mobile / tablet (<lg): two rows ─────────────────────────────────── */}
-        <div className="lg:hidden">
-          {/* Row 1: hamburger | venue name */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onOpenSidebar}
-              aria-label="Open navigation"
-              className="touch-manipulation flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
-            <span className="text-xl font-bold uppercase tracking-widest text-foreground">
-              {venueName}
-            </span>
-          </div>
-
-          {/* Row 2: stat chips */}
-          <div className="mt-3 flex items-center justify-center gap-2 overflow-x-auto">
-            <StatChip
-              icon={<DollarSign className="h-4 w-4" />}
-              label="Today"
-              value={`$${todayRevenue.toFixed(2)}`}
-              highlight
-            />
-            <StatChip
-              icon={<Users className="h-4 w-4" />}
-              label="Active"
-              value={String(activeTables)}
-            />
-            <StatChip
-              icon={<CheckCircle className="h-4 w-4" />}
-              label="Sessions"
-              value={String(completedSessions)}
-            />
-          </div>
-        </div>
-
-        {/* ── Desktop (lg+): single row ─────────────────────────────────────── */}
-        <div className="hidden min-h-20 items-center justify-between lg:flex lg:py-1">
-          <span className="text-2xl font-bold uppercase tracking-widest text-foreground whitespace-nowrap">
+          <span className="text-xl font-bold uppercase tracking-widest text-foreground">
             {venueName}
           </span>
-
-          <div className="flex items-center gap-3">
-            <StatChip
-              icon={<DollarSign className="h-5 w-5" />}
-              label="Today's Revenue"
-              value={`$${todayRevenue.toFixed(2)}`}
-              highlight
-            />
-            <StatChip
-              icon={<Users className="h-5 w-5" />}
-              label="Active Tables"
-              value={String(activeTables)}
-            />
-            <StatChip
-              icon={<CheckCircle className="h-5 w-5" />}
-              label="Sessions Today"
-              value={String(completedSessions)}
-            />
-          </div>
         </div>
 
+        {/* Desktop: centered venue name */}
+        <div className="hidden min-h-14 items-center justify-center lg:flex">
+          <span className="text-2xl font-bold uppercase tracking-widest text-foreground">
+            {venueName}
+          </span>
+        </div>
       </div>
     </header>
+  )
+}
+
+export interface StatBarProps {
+  todayRevenue: number
+  activeTables: number
+  completedSessions: number
+}
+
+export function StatBar({ todayRevenue, activeTables, completedSessions }: StatBarProps) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-4 sm:px-6 lg:justify-end xl:px-8">
+      <StatChip
+        icon={<DollarSign className="h-4 w-4 lg:h-5 lg:w-5" />}
+        label="Today's Revenue"
+        value={`$${todayRevenue.toFixed(2)}`}
+        highlight
+      />
+      <StatChip
+        icon={<Users className="h-4 w-4 lg:h-5 lg:w-5" />}
+        label="Active Tables"
+        value={String(activeTables)}
+      />
+      <StatChip
+        icon={<CheckCircle className="h-4 w-4 lg:h-5 lg:w-5" />}
+        label="Sessions Today"
+        value={String(completedSessions)}
+      />
+    </div>
   )
 }
