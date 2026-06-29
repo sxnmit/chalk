@@ -56,10 +56,6 @@ function SignupForm() {
       return
     }
 
-    // When email confirmation is enabled in Supabase, signUp does not return
-    // a session — the user has to click the link in the confirmation email
-    // before they're authenticated. Show a "check your email" screen instead
-    // of pushing them into onboarding where every API call would 401.
     if (!data.session) {
       setConfirmationSent(true)
       setLoading(false)
@@ -81,6 +77,15 @@ function SignupForm() {
         <p className="mt-4 text-xs text-white/40">
           The link will bring you back here and drop you straight into onboarding. You can close
           this tab in the meantime.
+        </p>
+        <p className="mt-6 text-center text-sm text-white/45">
+          Didn&apos;t get the email?{" "}
+          <button
+            onClick={() => setConfirmationSent(false)}
+            className="font-medium text-primary transition-colors hover:text-primary/80"
+          >
+            Try again
+          </button>
         </p>
       </div>
     )

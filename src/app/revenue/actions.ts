@@ -14,22 +14,28 @@ export interface RevenueData {
 // Reads venue_id and role from the JWT. Falls back to a DB lookup
 // (venue_members → users) when claims are absent (e.g. token pre-dates the hook).
 async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) redirect("/login")
+
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect("/login")
 
-  const payload = JSON.parse(
-    Buffer.from(session.access_token.split(".")[1], "base64url").toString()
-  )
+  let venueId: string | undefined
+  let role: string | undefined
 
-  let venueId = payload.app_metadata?.venue_id as string | undefined
-  let role = payload.app_metadata?.role as string | undefined
+  if (session?.access_token) {
+    const payload = JSON.parse(
+      Buffer.from(session.access_token.split(".")[1], "base64url").toString()
+    )
+    venueId = payload.app_metadata?.venue_id as string | undefined
+    role = payload.app_metadata?.role as string | undefined
+  }
 
   if (!venueId) {
     const { data: member } = await supabase
       .from("venue_members")
       .select("venue_id, role")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle()
 
@@ -37,15 +43,15 @@ async function getProfileFromToken(supabase: Awaited<ReturnType<typeof createCli
       venueId = member.venue_id
       role = member.role
     } else {
-      const { data: user } = await supabase
+      const { data: dbUser } = await supabase
         .from("users")
         .select("venue_id, role")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .maybeSingle()
 
-      if (user) {
-        venueId = user.venue_id
-        role = user.role
+      if (dbUser) {
+        venueId = dbUser.venue_id
+        role = dbUser.role
       }
     }
   }

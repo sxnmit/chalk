@@ -29,20 +29,26 @@ export async function getRequestProfile(
   supabase: ServerClient,
   options: { allowMissingVenue?: boolean } = {}
 ): Promise<RequestProfile | null> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return null
+
   const {
     data: { session },
   } = await supabase.auth.getSession()
 
-  if (!session) return null
+  let claimVenueId: string | undefined
+  let claimRole: string | undefined
 
-  const claims = decodeClaims(session.access_token)
-  const claimVenueId = claims.app_metadata?.active_venue_id ?? claims.app_metadata?.venue_id
-  const claimRole = claims.app_metadata?.role
+  if (session?.access_token) {
+    const claims = decodeClaims(session.access_token)
+    claimVenueId = claims.app_metadata?.active_venue_id ?? claims.app_metadata?.venue_id
+    claimRole = claims.app_metadata?.role
+  }
 
   if (claimVenueId && isVenueRole(claimRole)) {
     return {
-      userId: session.user.id,
-      email: session.user.email ?? undefined,
+      userId: user.id,
+      email: user.email ?? undefined,
       venueId: claimVenueId,
       role: claimRole,
     }
@@ -51,15 +57,15 @@ export async function getRequestProfile(
   const { data: membership } = await supabase
     .from("venue_members")
     .select("venue_id, role")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle()
 
   if (membership && isVenueRole(membership.role)) {
     return {
-      userId: session.user.id,
-      email: session.user.email ?? undefined,
+      userId: user.id,
+      email: user.email ?? undefined,
       venueId: membership.venue_id,
       role: membership.role,
     }
@@ -68,13 +74,13 @@ export async function getRequestProfile(
   const { data: legacyUser } = await supabase
     .from("users")
     .select("venue_id, role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .maybeSingle()
 
   if (legacyUser && isVenueRole(legacyUser.role)) {
     return {
-      userId: session.user.id,
-      email: session.user.email ?? undefined,
+      userId: user.id,
+      email: user.email ?? undefined,
       venueId: legacyUser.venue_id,
       role: legacyUser.role,
     }
@@ -82,8 +88,8 @@ export async function getRequestProfile(
 
   if (options.allowMissingVenue) {
     return {
-      userId: session.user.id,
-      email: session.user.email ?? undefined,
+      userId: user.id,
+      email: user.email ?? undefined,
       venueId: "",
       role: "staff",
     }

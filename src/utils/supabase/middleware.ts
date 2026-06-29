@@ -144,13 +144,18 @@ export async function updateSession(request: NextRequest) {
 
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('status')
+      .select('status, trial_ends_at')
       .eq('venue_id', venueId)
       .maybeSingle()
 
     onboardingComplete = Boolean(venue?.onboarding_completed_at && subscription)
 
-    if (subscription && BLOCKED_STATUSES.has(subscription.status)) {
+    const trialExpired =
+      subscription?.status === 'trialing' &&
+      subscription.trial_ends_at &&
+      new Date(subscription.trial_ends_at).getTime() < Date.now()
+
+    if (subscription && (BLOCKED_STATUSES.has(subscription.status) || trialExpired)) {
       if (paywalledApiRoute) {
         return NextResponse.json(
           { error: 'Subscription inactive' },

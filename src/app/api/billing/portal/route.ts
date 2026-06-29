@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { getStripe } from "@/lib/stripe"
-import { absoluteUrl, apiError, loadSubscriptionSummary, requireProfile } from "@/lib/billing/server"
+import { absoluteUrl, apiError, loadSubscriptionSummary, requireRole } from "@/lib/billing/server"
 
 export async function POST() {
   try {
-    const { profile } = await requireProfile()
+    const { profile } = await requireRole(["owner"])
     const subscription = await loadSubscriptionSummary(profile.venueId)
 
     if (!subscription.stripeCustomerId) {

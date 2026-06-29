@@ -3,6 +3,8 @@ import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 
+const ADMIN_ROLES = ["owner", "manager"]
+
 const CreateSchema = z.object({
   name: z.string().min(1).max(100),
   category: z.string().min(1).max(30),
@@ -14,7 +16,8 @@ const CreateSchema = z.object({
 export async function GET() {
   try {
     const supabase = await createClient()
-    const { venueId } = await getProfile()
+    const { venueId, role } = await getProfile()
+    if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const { data, error } = await supabase
       .from("menu_items")
@@ -33,7 +36,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const { venueId } = await getProfile()
+    const { venueId, role } = await getProfile()
+    if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const body = await request.json()
     const parsed = CreateSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
