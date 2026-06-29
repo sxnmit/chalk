@@ -70,8 +70,8 @@ export function SidebarContent({
     <div className="flex h-full flex-col bg-sidebar">
       {/* Logo + wordmark */}
       <div
-        className={`flex border-b border-white/5 ${
-          collapsed ? "items-center justify-center px-3 py-5" : "items-center justify-between gap-3 px-5 py-5"
+        className={`flex h-[105px] items-center border-b border-white/5 ${
+          collapsed ? "justify-center px-3" : "justify-between gap-3 px-5"
         }`}
       >
         {collapsed ? (
