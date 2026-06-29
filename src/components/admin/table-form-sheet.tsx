@@ -20,7 +20,10 @@ import {
 } from "@/components/ui/select"
 import type { AdminTable, AdminRate } from "./tables-admin"
 
-const TABLE_SIZES = ["7ft", "8ft", "9ft", "bar_box", "snooker"]
+const TABLE_SIZES = [
+  { value: "9ft", label: "9ft" },
+  { value: "bar_box", label: "Bar Box" },
+]
 const TABLE_STATUSES = [
   { value: "active", label: "Active" },
   { value: "maintenance", label: "Maintenance" },
@@ -117,7 +120,7 @@ export function TableFormSheet({ open, onOpenChange, table, rates, onSaved }: Pr
               </SelectTrigger>
               <SelectContent>
                 {TABLE_SIZES.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
