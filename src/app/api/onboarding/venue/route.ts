@@ -1,18 +1,42 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { getStripe } from "@/lib/stripe"
 import { apiError, requireProfile } from "@/lib/billing/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 
+const validTimezones = new Set(Intl.supportedValuesOf("timeZone"))
+
+const VenueSchema = z.object({
+  name: z.string().trim().min(1, "Venue name is required").max(100),
+  timezone: z
+    .string()
+    .trim()
+    .default("America/Toronto")
+    .refine((tz) => validTimezones.has(tz), "Invalid timezone"),
+  addressLine1: z.string().max(200).optional(),
+  city: z.string().max(100).optional(),
+  postalCode: z.string().max(20).optional(),
+  country: z.string().length(2).default("CA"),
+})
+
 export async function POST(request: Request) {
   try {
     const { profile } = await requireProfile({ allowMissingVenue: true })
-    const body = await request.json()
-    const name = String(body.name ?? "").trim()
-    const timezone = String(body.timezone ?? "America/Toronto").trim()
 
-    if (!name) {
-      return NextResponse.json({ error: "Venue name is required" }, { status: 400 })
+    if (profile.venueId) {
+      return NextResponse.json(
+        { error: "You already have a venue" },
+        { status: 409 },
+      )
     }
+
+    const body = await request.json()
+    const parsed = VenueSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+
+    const { name, timezone } = parsed.data
 
     const admin = createAdminClient()
     const { data: venue, error: venueError } = await admin
@@ -27,10 +51,10 @@ export async function POST(request: Request) {
       name,
       metadata: { venue_id: venue.id },
       address: {
-        line1: body.addressLine1 || undefined,
-        city: body.city || undefined,
-        postal_code: body.postalCode || undefined,
-        country: body.country || "CA",
+        line1: parsed.data.addressLine1 || undefined,
+        city: parsed.data.city || undefined,
+        postal_code: parsed.data.postalCode || undefined,
+        country: parsed.data.country,
       },
     })
 

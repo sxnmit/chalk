@@ -3,6 +3,8 @@ import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 
+const ADMIN_ROLES = ["owner", "manager"]
+
 const UpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   category: z.string().min(1).max(30).optional(),
@@ -17,7 +19,8 @@ export async function PATCH(
 ) {
   try {
     const supabase = await createClient()
-    const { venueId } = await getProfile()
+    const { venueId, role } = await getProfile()
+    if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const { id } = await params
     const body = await request.json()
     const parsed = UpdateSchema.safeParse(body)
@@ -45,7 +48,8 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createClient()
-    const { venueId } = await getProfile()
+    const { venueId, role } = await getProfile()
+    if (!ADMIN_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const { id } = await params
 
     const { error } = await supabase
