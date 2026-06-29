@@ -150,68 +150,57 @@ export function RevenuePageClient() {
     <SidebarPageLayout>
       {(openSidebar) => (
         <>
-        {/* ── Top bar ────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-30 border-b border-border/50">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
-          <div className="relative flex items-center gap-3 px-4 py-3 sm:px-6">
-
-            {/* Mobile hamburger */}
-            <button
-              onClick={openSidebar}
-              aria-label="Open navigation"
-              className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
-            {/* Date range picker — top right */}
-            <div className="ml-auto">
-              <PopoverRoot open={pickerOpen} onOpenChange={setPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary">
-                    <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="hidden sm:inline">
-                      {rangeLabel(range.from, range.to)}
-                    </span>
-                    <span className="sm:hidden text-muted-foreground text-xs">
-                      {range.from ? fmtShort(range.from) : "Date"}
-                    </span>
-                  </button>
-                </PopoverTrigger>
-
-                <PopoverContent className="p-0 w-auto" align="end">
-                  <Calendar
-                    mode="range"
-                    selected={range}
-                    onSelect={handleRangeSelect}
-                    numberOfMonths={1}
-                    disabled={{ after: new Date() }}
-                    defaultMonth={range.from}
-                  />
-                  {/* Quick presets */}
-                  <div className="border-t border-border/50 px-3 py-2 flex flex-wrap gap-1.5">
-                    {PRESETS.map((p) => (
-                      <button
-                        key={p.label}
-                        onClick={() => applyPreset(p.range())}
-                        className="rounded-lg border border-border/50 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </PopoverRoot>
-            </div>
-          </div>
-        </header>
-
-        {/* ── Main content ───────────────────────────────────────────────────── */}
         <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
           <div className="mx-auto max-w-4xl">
-          <div className="mb-6">
-            <h1 className="font-heading text-3xl font-medium">Revenue</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Track session revenue and peak hours.</p>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={openSidebar}
+                aria-label="Open navigation"
+                className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="font-heading text-3xl font-medium">Revenue</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Track session revenue and peak hours.</p>
+              </div>
+            </div>
+            <PopoverRoot open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary">
+                  <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="hidden sm:inline">
+                    {rangeLabel(range.from, range.to)}
+                  </span>
+                  <span className="sm:hidden text-muted-foreground text-xs">
+                    {range.from ? fmtShort(range.from) : "Date"}
+                  </span>
+                </button>
+              </PopoverTrigger>
+
+              <PopoverContent className="p-0 w-auto" align="end">
+                <Calendar
+                  mode="range"
+                  selected={range}
+                  onSelect={handleRangeSelect}
+                  numberOfMonths={1}
+                  disabled={{ after: new Date() }}
+                  defaultMonth={range.from}
+                />
+                <div className="border-t border-border/50 px-3 py-2 flex flex-wrap gap-1.5">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.label}
+                      onClick={() => applyPreset(p.range())}
+                      className="rounded-lg border border-border/50 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </PopoverRoot>
           </div>
           {error ? (
             <p className="text-sm text-destructive">{error}</p>

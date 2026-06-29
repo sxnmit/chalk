@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Pencil, Trash2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -27,7 +27,7 @@ function formatCurrency(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export function RatesAdmin() {
+export function RatesAdmin({ openSidebar }: { openSidebar?: () => void }) {
   const [rates, setRates] = useState<AdminRate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,9 +102,20 @@ export function RatesAdmin() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-3xl font-medium">Rate tiers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Configure hourly pricing for your venue.</p>
+        <div className="flex items-center gap-3">
+          {openSidebar && (
+            <button
+              onClick={openSidebar}
+              aria-label="Open navigation"
+              className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+          <div>
+            <h1 className="font-heading text-3xl font-medium">Rate tiers</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Configure hourly pricing for your venue.</p>
+          </div>
         </div>
         <Button onClick={openCreate} size="sm">
           <Plus className="mr-1.5 h-4 w-4" />

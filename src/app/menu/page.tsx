@@ -87,26 +87,21 @@ export default function MenuPage() {
     <SidebarPageLayout>
       {(openSidebar) => (
         <>
-          <header className="sticky top-0 z-30 border-b border-border/50">
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
-            <div className="relative flex items-center gap-3 px-4 py-3 sm:px-6">
-              <button
-                onClick={openSidebar}
-                aria-label="Open navigation"
-                className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            </div>
-          </header>
-
           <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
             <div className="mx-auto max-w-4xl">
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-heading text-3xl font-medium">Menu</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage items available for ordering</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={openSidebar}
+              aria-label="Open navigation"
+              className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="font-heading text-3xl font-medium">Menu</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Manage items available for ordering</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild className="h-11 px-4">

@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { ArrowLeft, Menu } from "lucide-react"
+import { Menu } from "lucide-react"
 import { toast } from "sonner"
 import { InviteMemberDialog } from "@/components/billing/invite-member-dialog"
 import { TeamMemberRow, type TeamMember } from "@/components/billing/team-member-row"
@@ -103,31 +102,21 @@ export default function AdminTeamPage() {
     <SidebarPageLayout>
       {(openSidebar) => (
         <>
-          <header className="sticky top-0 z-30 border-b border-border/50">
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-xl pointer-events-none" />
-            <div className="relative flex items-center gap-3 px-4 py-3 sm:px-6">
-              <button
-                onClick={openSidebar}
-                aria-label="Open navigation"
-                className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            </div>
-          </header>
-
           <main className="flex-1 px-4 pb-10 pt-6 text-foreground sm:px-6 xl:px-8">
             <div className="mx-auto max-w-4xl">
-        <Button asChild variant="ghost" className="mb-6">
-          <Link href="/dashboard">
-            <ArrowLeft />
-            Dashboard
-          </Link>
-        </Button>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="font-heading text-3xl font-medium">Team</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage access for this venue.</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={openSidebar}
+              aria-label="Open navigation"
+              className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="font-heading text-3xl font-medium">Team</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Manage access for this venue.</p>
+            </div>
           </div>
           {canManage && <InviteMemberDialog onInvited={load} />}
         </div>

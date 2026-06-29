@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Pencil, Trash2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -48,9 +48,10 @@ function StatusPill({ status }: { status: "active" | "maintenance" | "retired" }
 
 interface Props {
   ratesForForm?: AdminRate[]
+  openSidebar?: () => void
 }
 
-export function TablesAdmin({ ratesForForm }: Props) {
+export function TablesAdmin({ ratesForForm, openSidebar }: Props) {
   const [tables, setTables] = useState<AdminTable[]>([])
   const [rates, setRates] = useState<AdminRate[]>(ratesForForm ?? [])
   const [loading, setLoading] = useState(true)
@@ -122,9 +123,20 @@ export function TablesAdmin({ ratesForForm }: Props) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-3xl font-medium">Tables</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your venue&apos;s pool tables.</p>
+        <div className="flex items-center gap-3">
+          {openSidebar && (
+            <button
+              onClick={openSidebar}
+              aria-label="Open navigation"
+              className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-primary transition-colors hover:bg-primary/10 lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+          <div>
+            <h1 className="font-heading text-3xl font-medium">Tables</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your venue&apos;s pool tables.</p>
+          </div>
         </div>
         <Button onClick={openCreate} size="sm">
           <Plus className="mr-1.5 h-4 w-4" />
