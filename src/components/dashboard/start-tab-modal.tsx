@@ -14,13 +14,18 @@ export interface StartTabModalProps {
 export function StartTabModal({ onConfirm, onCancel }: StartTabModalProps) {
   const [playerName, setPlayerName] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (submitting) return
     setSubmitting(true)
+    setError(null)
     try {
       await onConfirm(playerName.trim())
+    } catch (err) {
+      console.error("Failed to start tab:", err)
+      setError(err instanceof Error ? err.message : "Could not start tab")
     } finally {
       setSubmitting(false)
     }
@@ -45,9 +50,6 @@ export function StartTabModal({ onConfirm, onCancel }: StartTabModalProps) {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-foreground">Start a Tab</h2>
-            <p className="text-sm text-muted-foreground">
-              For customers ordering food and drinks without a pool table.
-            </p>
           </div>
         </div>
 
@@ -66,6 +68,12 @@ export function StartTabModal({ onConfirm, onCancel }: StartTabModalProps) {
               className="border-border/50 focus:border-primary"
             />
           </div>
+
+          {error && (
+            <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-3">
             <Button

@@ -2,23 +2,17 @@
 
 import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
-import { Plus, ShoppingBag } from "lucide-react"
 import { Header, StatBar } from "@/components/dashboard/header"
 import { SidebarLayout } from "@/components/dashboard/sidebar-layout"
 import { TableCard } from "@/components/dashboard/table-card"
-import { TabCard } from "@/components/dashboard/tab-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
-import { StartTabModal } from "@/components/dashboard/start-tab-modal"
 import { EndSessionModal } from "@/components/dashboard/end-session-modal"
-import { Button } from "@/components/ui/button"
 import { PoolTable, Rate } from "@/lib/pool-types"
 import { logoutAction } from "@/app/login/actions"
 import {
   loadDashboardData,
   startSessionAction,
   endSessionAction,
-  startTabAction,
-  type OpenTab,
 } from "@/app/dashboard/actions"
 
 function TableCardSkeleton() {
@@ -42,12 +36,10 @@ function TableCardSkeleton() {
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
   const [rates, setRates] = useState<Rate[]>([])
-  const [tabs, setTabs] = useState<OpenTab[]>([])
   const [todayRevenue, setTodayRevenue] = useState(0)
   const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
-  const [startTabOpen, setStartTabOpen] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [venueName, setVenueName] = useState("")
   const [loading, setLoading] = useState(true)
@@ -63,10 +55,9 @@ export default function DashboardPage() {
     }, 15000)
 
     loadDashboardData()
-      .then(({ tables, rates, tabs: freshTabs, userRole, venueName: name, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
+      .then(({ tables, rates, userRole, venueName: name, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
         setTables(tables)
         setRates(rates)
-        setTabs(freshTabs)
         setIsOwner(userRole === "owner")
         setVenueName(name)
         setTodayRevenue(revenue)
@@ -85,12 +76,10 @@ export default function DashboardPage() {
   const refresh = useCallback(async () => {
     const {
       tables: freshTables,
-      tabs: freshTabs,
       todayRevenue: revenue,
       todayCompletedSessionsCount: completed,
     } = await loadDashboardData()
     setTables(freshTables)
-    setTabs(freshTabs)
     setTodayRevenue(revenue)
     setTodayCompletedSessionsCount(completed)
   }, [])
@@ -137,15 +126,6 @@ export default function DashboardPage() {
     await refresh()
     setEndModalTable(null)
   }, [endModalTable, refresh])
-
-  const handleConfirmStartTab = useCallback(
-    async (playerName: string) => {
-      await startTabAction(playerName || undefined)
-      await refresh()
-      setStartTabOpen(false)
-    },
-    [refresh]
-  )
 
   const handleLogout = useCallback(() => {
     logoutAction()
@@ -202,77 +182,21 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-8">
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {tables.map((table, i) => (
-                    <div
-                      key={table.id}
-                      className="animate-card-in"
-                      style={{ animationDelay: `${i * 60}ms` }}
-                    >
-                      <TableCard
-                        table={table}
-                        rates={rates}
-                        onStartSession={handleStartSession}
-                        onEndSession={handleEndSession}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-                      <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                        Tabs
-                      </h2>
-                      {tabs.length > 0 && (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
-                          {tabs.length}
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      onClick={() => setStartTabOpen(true)}
-                      variant="outline"
-                      size="sm"
-                      className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
-                    >
-                      <Plus className="mr-1.5 h-3.5 w-3.5" />
-                      New Tab
-                    </Button>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {tables.map((table, i) => (
+                  <div
+                    key={table.id}
+                    className="animate-card-in"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  >
+                    <TableCard
+                      table={table}
+                      rates={rates}
+                      onStartSession={handleStartSession}
+                      onEndSession={handleEndSession}
+                    />
                   </div>
-
-                  {tabs.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-8 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        No open tabs. Start one for customers ordering food or drinks without a pool table.
-                      </p>
-                      <Button
-                        onClick={() => setStartTabOpen(true)}
-                        variant="outline"
-                        size="sm"
-                        className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
-                      >
-                        <Plus className="mr-1.5 h-3.5 w-3.5" />
-                        Start a Tab
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      {tabs.map((tab, i) => (
-                        <div
-                          key={tab.id}
-                          className="animate-card-in"
-                          style={{ animationDelay: `${i * 60}ms` }}
-                        >
-                          <TabCard tab={tab} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                ))}
               </div>
             )}
           </main>
@@ -293,13 +217,6 @@ export default function DashboardPage() {
               rates={rates}
               onConfirm={handleConfirmEnd}
               onCancel={() => setEndModalTable(null)}
-            />
-          )}
-
-          {startTabOpen && (
-            <StartTabModal
-              onConfirm={handleConfirmStartTab}
-              onCancel={() => setStartTabOpen(false)}
             />
           )}
         </>
