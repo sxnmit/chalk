@@ -75,7 +75,7 @@ export async function POST(
             .eq("id", existingPayment.id)
             .eq("venue_id", venueId)
 
-          if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+          if (updateErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
           return NextResponse.json({ client_secret: updatedIntent.client_secret, payment_id: existingPayment.id })
         }
@@ -136,7 +136,11 @@ export async function POST(
 
     return NextResponse.json({ client_secret: paymentIntent.client_secret, payment_id: paymentId })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error"
-    return NextResponse.json({ error: msg }, { status: e instanceof Error && msg === "Unauthorized" ? 401 : 500 })
+    console.error("Checkout intent failed:", e)
+    const isAuthError = e instanceof Error && e.message === "Not authenticated"
+    return NextResponse.json(
+      { error: isAuthError ? "Unauthorized" : "Internal server error" },
+      { status: isAuthError ? 401 : 500 },
+    )
   }
 }

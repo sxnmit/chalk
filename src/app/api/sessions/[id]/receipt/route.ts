@@ -42,7 +42,7 @@ export async function GET(
       .eq("session_id", sessionId)
       .eq("venue_id", venueId)
 
-    if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 })
+    if (itemsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
     let cardLast4: string | null = null
     if (payment.stripe_payment_intent_id && payment.method === "card") {
@@ -90,7 +90,11 @@ export async function GET(
       cardLast4,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error"
-    return NextResponse.json({ error: msg }, { status: 401 })
+    console.error("Receipt generation failed:", e)
+    const isAuthError = e instanceof Error && e.message === "Not authenticated"
+    return NextResponse.json(
+      { error: isAuthError ? "Unauthorized" : "Internal server error" },
+      { status: isAuthError ? 401 : 500 },
+    )
   }
 }

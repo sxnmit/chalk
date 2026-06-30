@@ -67,7 +67,7 @@ export async function POST(
       const stripe = getStripe()
       const pi = await stripe.paymentIntents.retrieve(piId)
       if (pi.status !== "succeeded") {
-        return NextResponse.json({ error: `Payment not succeeded (status: ${pi.status})` }, { status: 400 })
+        return NextResponse.json({ error: "Payment has not been completed" }, { status: 400 })
       }
 
       // Compare against the amount the PI was authorized for (snapshotted at

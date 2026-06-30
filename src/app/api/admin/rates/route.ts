@@ -16,6 +16,7 @@ const CreateSchema = z.object({
 function adminErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error"
   const status = message.includes("Not authenticated") ? 401 : 500
+  if (status === 500) console.error("Admin rates error:", error)
   return NextResponse.json({ error: status === 401 ? "Unauthorized" : "Internal server error" }, { status })
 }
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
         .from("rates")
         .update({ is_default: false })
         .eq("venue_id", venueId)
-      if (unsetDefaultError) return NextResponse.json({ error: unsetDefaultError.message }, { status: 500 })
+      if (unsetDefaultError) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
 
     const { data, error } = await supabase
