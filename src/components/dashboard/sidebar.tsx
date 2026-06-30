@@ -124,73 +124,68 @@ export function SidebarContent({
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col px-3 py-4">
-        <div className="space-y-0.5">
-          {visibleItems.map((item) => {
-            const Icon = item.icon
-            const active = pathname.startsWith(item.href)
-            const link = (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={onClose}
-                className={itemClass(active)}
-                aria-label={collapsed ? item.label : undefined}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!collapsed && item.label}
-              </Link>
-            )
-            return collapsed ? (
-              <CollapsedTooltip key={item.key} label={item.label}>
-                {link}
-              </CollapsedTooltip>
-            ) : (
-              link
-            )
-          })}
+      <nav className="flex-1 space-y-0.5 px-3 py-4">
+        {visibleItems.map((item) => {
+          const Icon = item.icon
+          const active = pathname.startsWith(item.href)
+          const link = (
+            <Link
+              key={item.key}
+              href={item.href}
+              onClick={onClose}
+              className={itemClass(active)}
+              aria-label={collapsed ? item.label : undefined}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!collapsed && item.label}
+            </Link>
+          )
+          return collapsed ? (
+            <CollapsedTooltip key={item.key} label={item.label}>
+              {link}
+            </CollapsedTooltip>
+          ) : (
+            link
+          )
+        })}
 
-          {visibleAdminItems.length > 0 && (
-            <>
-              {!collapsed && (
-                <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                  Admin
-                </p>
-              )}
-              {visibleAdminItems.map((item) => {
-                const Icon = item.icon
-                const active = pathname.startsWith(item.href)
-                const link = (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={onClose}
-                    className={itemClass(active)}
-                    aria-label={collapsed ? item.label : undefined}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {!collapsed && item.label}
-                  </Link>
-                )
-                return collapsed ? (
-                  <CollapsedTooltip key={item.key} label={item.label}>
-                    {link}
-                  </CollapsedTooltip>
-                ) : (
-                  link
-                )
-              })}
-            </>
-          )}
-        </div>
-
-        {/* Spacer pushes Owner section to bottom */}
-        <div className="flex-1" />
+        {visibleAdminItems.length > 0 && (
+          <>
+            {!collapsed && (
+              <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Admin
+              </p>
+            )}
+            {visibleAdminItems.map((item) => {
+              const Icon = item.icon
+              const active = pathname.startsWith(item.href)
+              const link = (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={onClose}
+                  className={itemClass(active)}
+                  aria-label={collapsed ? item.label : undefined}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && item.label}
+                </Link>
+              )
+              return collapsed ? (
+                <CollapsedTooltip key={item.key} label={item.label}>
+                  {link}
+                </CollapsedTooltip>
+              ) : (
+                link
+              )
+            })}
+          </>
+        )}
 
         {visibleOwnerItems.length > 0 && (
-          <div className="space-y-0.5">
+          <>
             {!collapsed && (
-              <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
                 Owner
               </p>
             )}
@@ -217,7 +212,7 @@ export function SidebarContent({
                 link
               )
             })}
-          </div>
+          </>
         )}
       </nav>
 
