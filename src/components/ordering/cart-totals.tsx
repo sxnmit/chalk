@@ -23,10 +23,12 @@ export function CartTotals({ tableTotalCents, itemsTotalCents, taxCents, grandTo
 
   return (
     <div className="space-y-2 text-sm">
-      <div className="flex justify-between text-muted-foreground">
-        <span>Table time</span>
-        <span className="tabular-nums">{formatCAD(tableTotalCents)}</span>
-      </div>
+      {tableTotalCents > 0 && (
+        <div className="flex justify-between text-muted-foreground">
+          <span>Table time</span>
+          <span className="tabular-nums">{formatCAD(tableTotalCents)}</span>
+        </div>
+      )}
       {itemsTotalCents > 0 && (
         <div className="flex justify-between text-muted-foreground">
           <span>Food & drinks</span>

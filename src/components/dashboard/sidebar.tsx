@@ -12,6 +12,7 @@ import {
   CreditCard,
   Users,
   UtensilsCrossed,
+  ShoppingBag,
   ChevronLeft,
 } from "lucide-react"
 
@@ -24,7 +25,8 @@ type NavItem = {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { key: "dashboard", label: "Pool Tables", icon: LayoutDashboard, href: "/dashboard" },
+  { key: "tabs", label: "Tabs", icon: ShoppingBag, href: "/tabs" },
   { key: "menu", label: "Menu", icon: UtensilsCrossed, href: "/menu" },
   { key: "revenue", label: "Revenue", icon: BarChart2, href: "/revenue", ownerOnly: true },
   { key: "billing", label: "Billing", icon: CreditCard, href: "/admin/billing", ownerOnly: true },

@@ -175,23 +175,40 @@ export default function SessionPage() {
 
   const elapsedSeconds = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000)
   const elapsedHours = elapsedSeconds / 3600
-  const tableAmountCents = Math.round(session.actualRateCharged * 100 * elapsedHours)
+  const tableAmountCents = session.isTab
+    ? 0
+    : Math.round(session.actualRateCharged * 100 * elapsedHours)
+
+  const headerTitle = session.isTab
+    ? (session.playerName || "Tab")
+    : (session.tableName ?? "Session")
+  const headerSubtitle = session.isTab
+    ? "Food & drinks tab"
+    : `${session.rateName ?? "Standard"} rate`
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-6 space-y-4">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard")} aria-label="Back to dashboard">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          {!session.isTab && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/dashboard")}
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div>
-            <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{session.tableName}</h1>
-            <p className="text-sm text-muted-foreground">{session.rateName} rate</p>
+            <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{headerTitle}</h1>
+            <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
           </div>
         </div>
 
-        {/* Live timer card */}
+        {/* Live timer card — pool tables only; tabs have no timer */}
+        {!session.isTab && (
         <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -221,12 +238,16 @@ export default function SessionPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Menu browser */}
         <div className="rounded-xl border border-border/50 bg-card p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-semibold text-foreground text-sm">Add Items</h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold text-foreground text-sm">Add Items</h2>
+            </div>
+            <span className="text-xs text-muted-foreground">Items save automatically</span>
           </div>
           <MenuBrowser items={menuItems} loading={menuLoading} onAdd={handleAddItem} />
         </div>
@@ -255,14 +276,24 @@ export default function SessionPage() {
           />
         </div>
 
-        {/* CTA */}
-        <Button
-          className="w-full min-h-[52px] text-base"
-          size="lg"
-          onClick={() => router.push(`/session/${sessionId}/checkout`)}
-        >
-          Close &amp; Bill →
-        </Button>
+        {/* CTAs */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="outline"
+            className="min-h-[52px] flex-1 text-base"
+            size="lg"
+            onClick={() => router.push(session.isTab ? "/tabs" : "/dashboard")}
+          >
+            Save & exit
+          </Button>
+          <Button
+            className="min-h-[52px] flex-1 text-base"
+            size="lg"
+            onClick={() => router.push(`/session/${sessionId}/checkout`)}
+          >
+            {session.isTab ? "Close Tab & Bill →" : "Close & Bill →"}
+          </Button>
+        </div>
       </div>
     </div>
   )
