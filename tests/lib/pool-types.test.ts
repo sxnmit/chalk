@@ -6,7 +6,7 @@ import {
   formatTime,
   formatCurrency,
   type Rate,
-} from "./pool-types"
+} from "@/lib/pool-types"
 
 // Tests run with TZ pinned to America/New_York (see vitest.config.ts).
 // June 2026 calendar anchors used below:

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { hasRole, BLOCKED_SUBSCRIPTION_STATUSES } from "./types"
+import { hasRole, BLOCKED_SUBSCRIPTION_STATUSES } from "@/lib/billing/types"
 
 describe("hasRole", () => {
   it("returns true when the role is in the allow-list", () => {

@@ -4,7 +4,7 @@ import { createMockClient, makeSession } from "@/test/supabase-mock"
 // Mock the SSR Supabase factory before importing the module under test.
 vi.mock("@/utils/supabase/server", () => ({ createClient: vi.fn() }))
 
-import { getProfile } from "./auth"
+import { getProfile } from "@/lib/auth"
 import { createClient } from "@/utils/supabase/server"
 
 const mockedCreateClient = vi.mocked(createClient)

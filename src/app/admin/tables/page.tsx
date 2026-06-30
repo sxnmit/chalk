@@ -23,5 +23,5 @@ export default async function AdminTablesPage() {
     .eq("id", profile.venueId)
     .single()
 
-  return <TablesAdminClient venueName={venue?.name ?? "Venue"} />
+  return <TablesAdminClient venueName={venue?.name ?? "Venue"} isOwner={profile.role === "owner"} />
 }

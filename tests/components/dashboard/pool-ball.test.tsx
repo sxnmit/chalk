@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { PoolBall } from "./pool-ball"
+import { PoolBall } from "@/components/dashboard/pool-ball"
 
 describe("PoolBall", () => {
   it("renders the ball number", () => {

@@ -21,7 +21,7 @@ import {
   absoluteUrl,
   loadSubscriptionSummary,
   HttpError,
-} from "./server"
+} from "@/lib/billing/server"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 

@@ -3,7 +3,7 @@ import { createMockClient, makeSession } from "@/test/supabase-mock"
 
 vi.mock("@/utils/supabase/server", () => ({ createClient: vi.fn() }))
 
-import { loadDashboardData, startSessionAction, endSessionAction } from "./actions"
+import { loadDashboardData, startSessionAction, endSessionAction } from "@/app/dashboard/actions"
 import { createClient } from "@/utils/supabase/server"
 
 const mockedCreateClient = vi.mocked(createClient)

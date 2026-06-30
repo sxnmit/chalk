@@ -21,6 +21,7 @@ type NavItem = {
   label: string
   icon: React.ComponentType<{ className?: string }>
   href: string
+  adminOnly?: boolean
   ownerOnly?: boolean
 }
 
@@ -30,16 +31,17 @@ const NAV_ITEMS: NavItem[] = [
   { key: "menu", label: "Menu", icon: UtensilsCrossed, href: "/menu" },
   { key: "revenue", label: "Revenue", icon: BarChart2, href: "/revenue", ownerOnly: true },
   { key: "billing", label: "Billing", icon: CreditCard, href: "/admin/billing", ownerOnly: true },
-  { key: "team", label: "Team", icon: Users, href: "/admin/team", ownerOnly: true },
+  { key: "team", label: "Team", icon: Users, href: "/admin/team", adminOnly: true },
 ]
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
-  { key: "admin-tables", label: "Tables", icon: LayoutGrid, href: "/admin/tables", ownerOnly: true },
-  { key: "admin-rates", label: "Rate tiers", icon: DollarSign, href: "/admin/rates", ownerOnly: true },
+  { key: "admin-tables", label: "Tables", icon: LayoutGrid, href: "/admin/tables", adminOnly: true },
+  { key: "admin-rates", label: "Rate tiers", icon: DollarSign, href: "/admin/rates", adminOnly: true },
 ]
 
 export interface SidebarContentProps {
   venueName: string
+  isAdmin: boolean
   isOwner: boolean
   onLogout: () => void
   onClose?: () => void
@@ -49,6 +51,7 @@ export interface SidebarContentProps {
 
 export function SidebarContent({
   venueName,
+  isAdmin,
   isOwner,
   onLogout,
   onClose,
@@ -57,8 +60,10 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const pathname = usePathname()
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner)
-  const visibleAdminItems = ADMIN_NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner)
+  const canSee = (item: NavItem) =>
+    (!item.ownerOnly || isOwner) && (!item.adminOnly || isAdmin)
+  const visibleItems = NAV_ITEMS.filter(canSee)
+  const visibleAdminItems = ADMIN_NAV_ITEMS.filter(canSee)
 
   const itemClass = (active: boolean) =>
     `flex w-full items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${

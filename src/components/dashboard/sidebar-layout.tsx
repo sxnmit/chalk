@@ -6,6 +6,7 @@ import { SidebarContent } from "@/components/dashboard/sidebar"
 
 interface SidebarLayoutProps {
   venueName: string
+  isAdmin: boolean
   isOwner: boolean
   onLogout: () => void
   children: (openSidebar: () => void) => ReactNode
@@ -13,6 +14,7 @@ interface SidebarLayoutProps {
 
 export function SidebarLayout({
   venueName,
+  isAdmin,
   isOwner,
   onLogout,
   children,
@@ -34,6 +36,7 @@ export function SidebarLayout({
       >
         <SidebarContent
           venueName={venueName}
+          isAdmin={isAdmin}
           isOwner={isOwner}
           onLogout={onLogout}
           collapsed={desktopSidebarCollapsed}
@@ -55,6 +58,7 @@ export function SidebarLayout({
       >
         <SidebarContent
           venueName={venueName}
+          isAdmin={isAdmin}
           isOwner={isOwner}
           onLogout={onLogout}
           onClose={closeSidebar}
