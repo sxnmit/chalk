@@ -19,6 +19,7 @@ const UpdateSchema = z.object({
 function adminErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error"
   const status = message.includes("Not authenticated") ? 401 : 500
+  if (status === 500) console.error("Admin tables error:", error)
   return NextResponse.json({ error: status === 401 ? "Unauthorized" : "Internal server error" }, { status })
 }
 
@@ -43,7 +44,7 @@ export async function PATCH(
         .eq("id", parsed.data.default_rate_id)
         .eq("venue_id", venueId)
         .maybeSingle()
-      if (rateError) return NextResponse.json({ error: rateError.message }, { status: 500 })
+      if (rateError) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
       if (!rate) return NextResponse.json({ error: "Default rate not found for this venue" }, { status: 400 })
     }
 

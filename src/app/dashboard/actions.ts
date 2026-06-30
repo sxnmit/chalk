@@ -15,7 +15,7 @@ async function loadTodaySummaryForVenue(
     .select("timezone")
     .eq("id", profile.venue_id)
     .single()
-  if (venueError) throw venueError
+  if (venueError) { console.error("loadTodaySummary venue fetch failed:", venueError); throw new Error("Failed to load summary") }
 
   const { gte, lt } = todayBoundsUTC(venue.timezone)
 
@@ -27,7 +27,7 @@ async function loadTodaySummaryForVenue(
     .not("ended_at", "is", null)
     .gte("started_at", gte)
     .lt("started_at", lt)
-  if (sessionsError) throw sessionsError
+  if (sessionsError) { console.error("loadTodaySummary sessions fetch failed:", sessionsError); throw new Error("Failed to load summary") }
 
   const sessions = rows ?? []
   if (sessions.length === 0) return { totalRevenue: 0, sessionCount: 0 }
@@ -37,7 +37,7 @@ async function loadTodaySummaryForVenue(
     .from("order_items")
     .select("session_id, quantity, price_at_time_cents")
     .in("session_id", sessionIds)
-  if (itemsError) throw itemsError
+  if (itemsError) { console.error("loadTodaySummary items fetch failed:", itemsError); throw new Error("Failed to load summary") }
 
   const itemsBySession = new Map<string, number>()
   for (const i of itemRows ?? []) {
@@ -141,7 +141,7 @@ export async function loadDashboardData(): Promise<{
     .eq("venue_id", venueId)
     .in("status", ["free", "occupied"])
     .order("display_order")
-  if (tablesError) throw tablesError
+  if (tablesError) { console.error("loadDashboardData tables fetch failed:", tablesError); throw new Error("Failed to load dashboard") }
 
   const [
     { data: sessions, error: sessionsError },
@@ -163,9 +163,9 @@ export async function loadDashboardData(): Promise<{
     loadTodaySummaryForVenue(supabase, { venue_id: venueId }),
   ])
 
-  if (sessionsError) throw sessionsError
-  if (ratesError) throw ratesError
-  if (venueRowError) throw venueRowError
+  if (sessionsError) { console.error("loadDashboardData sessions fetch failed:", sessionsError); throw new Error("Failed to load dashboard") }
+  if (ratesError) { console.error("loadDashboardData rates fetch failed:", ratesError); throw new Error("Failed to load dashboard") }
+  if (venueRowError) { console.error("loadDashboardData venue fetch failed:", venueRowError); throw new Error("Failed to load dashboard") }
 
   // Active rates are selectable for new sessions; deactivated rates are kept
   // only if a currently-active session still references one, so its name and
@@ -297,8 +297,8 @@ export async function startSessionAction(
       .eq("venue_id", venueId),
   ])
 
-  if (insertError) throw insertError
-  if (tableError) throw tableError
+  if (insertError) { console.error("startSessionAction insert failed:", insertError); throw new Error("Failed to start session") }
+  if (tableError) { console.error("startSessionAction table update failed:", tableError); throw new Error("Failed to start session") }
 }
 
 export async function endSessionAction(tableId: string): Promise<void> {
@@ -328,6 +328,6 @@ export async function endSessionAction(tableId: string): Promise<void> {
       .eq("venue_id", venueId),
   ])
 
-  if (sessionError) throw sessionError
-  if (tableError) throw tableError
+  if (sessionError) { console.error("endSessionAction session update failed:", sessionError); throw new Error("Failed to end session") }
+  if (tableError) { console.error("endSessionAction table update failed:", tableError); throw new Error("Failed to end session") }
 }

@@ -27,7 +27,7 @@ export async function GET(
       .eq("session_id", sessionId)
       .eq("venue_id", venueId)
 
-    if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 })
+    if (itemsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
     const now = new Date()
     const tableTotalCents = await sessionTableTotalCents(

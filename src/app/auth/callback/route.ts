@@ -24,15 +24,17 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
+      console.error("Auth callback code exchange failed:", error.message)
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(error.message)}`, url),
+        new URL("/login?error=Authentication+failed.+Please+try+again.", url),
       )
     }
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
     if (error) {
+      console.error("Auth callback OTP verification failed:", error.message)
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(error.message)}`, url),
+        new URL("/login?error=Verification+failed.+The+link+may+have+expired.", url),
       )
     }
   } else {
