@@ -29,14 +29,17 @@ const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Pool Tables", icon: LayoutDashboard, href: "/dashboard" },
   { key: "tabs", label: "Tabs", icon: ShoppingBag, href: "/tabs" },
   { key: "menu", label: "Menu", icon: UtensilsCrossed, href: "/menu" },
-  { key: "revenue", label: "Revenue", icon: BarChart2, href: "/revenue", ownerOnly: true },
-  { key: "billing", label: "Billing", icon: CreditCard, href: "/admin/billing", ownerOnly: true },
-  { key: "team", label: "Team", icon: Users, href: "/admin/team", adminOnly: true },
 ]
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { key: "admin-tables", label: "Tables", icon: LayoutGrid, href: "/admin/tables", adminOnly: true },
   { key: "admin-rates", label: "Rate tiers", icon: DollarSign, href: "/admin/rates", adminOnly: true },
+]
+
+const OWNER_NAV_ITEMS: NavItem[] = [
+  { key: "revenue", label: "Revenue", icon: BarChart2, href: "/revenue", ownerOnly: true },
+  { key: "billing", label: "Billing", icon: CreditCard, href: "/admin/billing", ownerOnly: true },
+  { key: "team", label: "Team", icon: Users, href: "/admin/team", adminOnly: true },
 ]
 
 export interface SidebarContentProps {
@@ -64,6 +67,7 @@ export function SidebarContent({
     (!item.ownerOnly || isOwner) && (!item.adminOnly || isAdmin)
   const visibleItems = NAV_ITEMS.filter(canSee)
   const visibleAdminItems = ADMIN_NAV_ITEMS.filter(canSee)
+  const visibleOwnerItems = OWNER_NAV_ITEMS.filter(canSee)
 
   const itemClass = (active: boolean) =>
     `flex w-full items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
@@ -153,6 +157,39 @@ export function SidebarContent({
               </p>
             )}
             {visibleAdminItems.map((item) => {
+              const Icon = item.icon
+              const active = pathname.startsWith(item.href)
+              const link = (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={onClose}
+                  className={itemClass(active)}
+                  aria-label={collapsed ? item.label : undefined}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && item.label}
+                </Link>
+              )
+              return collapsed ? (
+                <CollapsedTooltip key={item.key} label={item.label}>
+                  {link}
+                </CollapsedTooltip>
+              ) : (
+                link
+              )
+            })}
+          </>
+        )}
+
+        {visibleOwnerItems.length > 0 && (
+          <>
+            {!collapsed && (
+              <p className="mt-4 mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Owner
+              </p>
+            )}
+            {visibleOwnerItems.map((item) => {
               const Icon = item.icon
               const active = pathname.startsWith(item.href)
               const link = (
