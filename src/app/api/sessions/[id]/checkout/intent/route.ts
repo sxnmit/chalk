@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 import { getStripe } from "@/lib/stripe"
 import { sessionTableTotalCents } from "@/lib/billing-table"
+import { getVenueTaxRate, computeTaxCents } from "@/lib/tax"
 
 export async function POST(
   _request: NextRequest,
@@ -38,7 +39,10 @@ export async function POST(
       .eq("venue_id", venueId)
 
     const itemsTotalCents = (items ?? []).reduce((sum, i) => sum + i.quantity * i.price_at_time_cents, 0)
-    const grandTotalCents = tableTotalCents + itemsTotalCents
+    const taxRate = await getVenueTaxRate(supabase, venueId)
+    const subtotalCents = tableTotalCents + itemsTotalCents
+    const taxCents = computeTaxCents(subtotalCents, taxRate)
+    const grandTotalCents = subtotalCents + taxCents
     const stripeAmountCents = Math.max(grandTotalCents, 50)
 
     // Check for existing pending payment
@@ -68,6 +72,7 @@ export async function POST(
               method: "card",
               table_total_cents: tableTotalCents,
               items_total_cents: itemsTotalCents,
+              tax_cents: taxCents,
               grand_total_cents: grandTotalCents,
               stripe_payment_intent_id: updatedIntent.id,
               status: "pending",
@@ -106,6 +111,7 @@ export async function POST(
           method: "card",
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
+          tax_cents: taxCents,
           grand_total_cents: grandTotalCents,
           stripe_payment_intent_id: paymentIntent.id,
           status: "pending",
@@ -123,7 +129,7 @@ export async function POST(
           method: "card",
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
-          tax_cents: 0,
+          tax_cents: taxCents,
           tip_cents: 0,
           grand_total_cents: grandTotalCents,
           stripe_payment_intent_id: paymentIntent.id,

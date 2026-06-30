@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 import { sessionTableTotalCents } from "@/lib/billing-table"
+import { getVenueTaxRate, computeTaxCents } from "@/lib/tax"
 
 export async function GET(
   _request: NextRequest,
@@ -45,12 +46,16 @@ export async function GET(
 
     const itemsTotalCents = orderItems.reduce((sum, i) => sum + i.line_total_cents, 0)
 
+    const taxRate = await getVenueTaxRate(supabase, venueId)
+    const subtotalCents = tableTotalCents + itemsTotalCents
+    const taxCents = computeTaxCents(subtotalCents, taxRate)
+
     return NextResponse.json({
       table_total_cents: tableTotalCents,
       items_total_cents: itemsTotalCents,
-      tax_cents: 0,
+      tax_cents: taxCents,
       tip_cents: 0,
-      grand_total_cents: tableTotalCents + itemsTotalCents,
+      grand_total_cents: subtotalCents + taxCents,
       order_items: orderItems,
       started_at: session.started_at,
       actual_rate_charged: Number(session.actual_rate_charged),
