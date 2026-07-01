@@ -13,6 +13,8 @@ function isExemptPath(pathname: string) {
   return (
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/billing/blocked') ||
     pathname.startsWith('/accept-invite') ||
