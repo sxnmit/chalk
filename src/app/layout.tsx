@@ -35,11 +35,14 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${exo2.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-exo2)]">
-          {children}
-          <DunningBanner />
-          <Toaster />
-        </body>
+      <body
+        className="min-h-full flex flex-col font-[family-name:var(--font-exo2)]"
+        suppressHydrationWarning
+      >
+        {children}
+        <DunningBanner />
+        <Toaster />
+      </body>
     </html>
   );
 }
