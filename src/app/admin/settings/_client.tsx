@@ -13,7 +13,7 @@ export function SettingsClient({ venueName }: Props) {
   const handleLogout = useCallback(() => { logoutAction() }, [])
 
   return (
-    <SidebarLayout venueName={venueName} isOwner={true} onLogout={handleLogout}>
+    <SidebarLayout venueName={venueName} isAdmin={true} isOwner={true} onLogout={handleLogout}>
       {(openSidebar) => (
         <>
         <main className="flex-1 px-4 pb-10 pt-6 sm:px-6 xl:px-8">
