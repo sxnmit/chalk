@@ -7,7 +7,7 @@ import { SidebarLayout } from "@/components/dashboard/sidebar-layout"
 import { TableCard } from "@/components/dashboard/table-card"
 import { StartSessionModal } from "@/components/dashboard/start-session-modal"
 import { EndSessionModal } from "@/components/dashboard/end-session-modal"
-import { PoolTable, Rate } from "@/lib/pool-types"
+import { PoolTable, Rate, PeakSchedule } from "@/lib/pool-types"
 import { logoutAction } from "@/app/login/actions"
 import {
   loadDashboardData,
@@ -42,6 +42,8 @@ export default function DashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [venueName, setVenueName] = useState("")
+  const [peakSchedule, setPeakSchedule] = useState<PeakSchedule>({ days: [5, 6], startHour: 20, endHour: 3 })
+  const [currency, setCurrency] = useState("CAD")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,12 +57,14 @@ export default function DashboardPage() {
     }, 15000)
 
     loadDashboardData()
-      .then(({ tables, rates, userRole, venueName: name, todayCompletedSessionsCount: completed }) => {
+      .then(({ tables, rates, userRole, venueName: name, peakSchedule: ps, currency: cur, todayCompletedSessionsCount: completed }) => {
         setTables(tables)
         setRates(rates)
         setIsAdmin(userRole === "owner" || userRole === "manager")
         setIsOwner(userRole === "owner")
         setVenueName(name)
+        setPeakSchedule(ps)
+        setCurrency(cur)
         setTodayCompletedSessionsCount(completed)
       })
       .catch((err) => {
@@ -76,9 +80,13 @@ export default function DashboardPage() {
   const refresh = useCallback(async () => {
     const {
       tables: freshTables,
+      peakSchedule: ps,
+      currency: cur,
       todayCompletedSessionsCount: completed,
     } = await loadDashboardData()
     setTables(freshTables)
+    setPeakSchedule(ps)
+    setCurrency(cur)
     setTodayCompletedSessionsCount(completed)
   }, [])
 
@@ -189,6 +197,8 @@ export default function DashboardPage() {
                     <TableCard
                       table={table}
                       rates={rates}
+                      peakSchedule={peakSchedule}
+                      currency={currency}
                       onStartSession={handleStartSession}
                       onEndSession={handleEndSession}
                     />
@@ -203,6 +213,8 @@ export default function DashboardPage() {
             <StartSessionModal
               table={startModalTable}
               rates={rates}
+              peakSchedule={peakSchedule}
+              currency={currency}
               onConfirm={handleConfirmStart}
               onCancel={() => setStartModalTable(null)}
             />
@@ -212,6 +224,8 @@ export default function DashboardPage() {
             <EndSessionModal
               table={endModalTable}
               rates={rates}
+              peakSchedule={peakSchedule}
+              currency={currency}
               onConfirm={handleConfirmEnd}
               onCancel={() => setEndModalTable(null)}
             />

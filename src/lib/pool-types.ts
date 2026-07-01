@@ -7,6 +7,18 @@ export interface Rate {
   isActive: boolean
 }
 
+export interface PeakSchedule {
+  days: number[]     // 0=Sun..6=Sat
+  startHour: number  // 0-23, inclusive
+  endHour: number    // 0-23, exclusive; if < startHour, window wraps past midnight
+}
+
+export const DEFAULT_PEAK_SCHEDULE: PeakSchedule = {
+  days: [5, 6],
+  startHour: 20,
+  endHour: 3,
+}
+
 export interface TableSession {
   id: string
   tableId: string
@@ -24,37 +36,42 @@ export interface PoolTable {
   session?: TableSession
 }
 
-// Peak hours: Fri–Sat 8 pm – 3 am (anchored to local time)
-export function isPeakHour(date: Date): boolean {
-  const day = date.getDay()  // 0=Sun … 5=Fri, 6=Sat
+export function isPeakHour(date: Date, schedule: PeakSchedule = DEFAULT_PEAK_SCHEDULE): boolean {
+  const day = date.getDay()
   const hour = date.getHours()
-  return (
-    (day === 5 && hour >= 20) ||  // Fri 8 pm →
-    (day === 6 && hour < 3)  ||  // Sat before 3 am (Fri night)
-    (day === 6 && hour >= 20) ||  // Sat 8 pm →
-    (day === 0 && hour < 3)       // Sun before 3 am (Sat night)
-  )
+  return matchesPeakWindow(day, hour, schedule)
+}
+
+function matchesPeakWindow(day: number, hour: number, schedule: PeakSchedule): boolean {
+  const { days, startHour, endHour } = schedule
+  if (days.length === 0) return false
+  const wraps = endHour <= startHour
+  for (const d of days) {
+    if (wraps) {
+      if (day === d && hour >= startHour) return true
+      if (day === (d + 1) % 7 && hour < endHour) return true
+    } else {
+      if (day === d && hour >= startHour && hour < endHour) return true
+    }
+  }
+  return false
 }
 
 export function calculateAmountOwed(
   startTime: Date,
   rate: Rate | undefined,
   peakRate: number,
-  endTime?: Date
+  endTime?: Date,
+  schedule: PeakSchedule = DEFAULT_PEAK_SCHEDULE,
 ): number {
   if (!rate) return 0
   const end = endTime ?? new Date()
 
-  // Flat billing: non-league and any rate already at/above peak price
   if (rate.pricePerHour >= peakRate) {
     const hours = (end.getTime() - startTime.getTime()) / (1000 * 60 * 60)
     return Math.max(0, hours * rate.pricePerHour)
   }
 
-  // League billing: walk billing hours anchored to session start.
-  // Rate for each hour is determined by whether that hour's START falls in peak time.
-  // This implements the overlap rule: a non-peak hour that crosses 8 pm stays at the
-  // lower rate until the next billing hour boundary.
   let total = 0
   let hourStart = new Date(startTime)
 
@@ -62,7 +79,7 @@ export function calculateAmountOwed(
     const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000)
     const billingEnd = hourEnd <= end ? hourEnd : end
     const fraction = (billingEnd.getTime() - hourStart.getTime()) / (1000 * 60 * 60)
-    const hourlyRate = isPeakHour(hourStart) ? peakRate : rate.pricePerHour
+    const hourlyRate = isPeakHour(hourStart, schedule) ? peakRate : rate.pricePerHour
     total += fraction * hourlyRate
     hourStart = hourEnd
   }
@@ -87,10 +104,11 @@ export function formatTime(date: Date): string {
   })
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currency = "CAD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
+    currencyDisplay: "narrowSymbol",
     minimumFractionDigits: 2,
   }).format(amount)
 }

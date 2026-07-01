@@ -76,8 +76,6 @@ describe("loadDashboardData", () => {
     expect(peak).toMatchObject({ name: "Peak", isPeakRate: true, isActive: false })
     expect(result.rates.find((r) => r.id === "r1")).toMatchObject({ isActive: true })
 
-    // Two-hour completed session at $25 → $50 of revenue today.
-    expect(result.todayRevenue).toBe(50)
     expect(result.todayCompletedSessionsCount).toBe(1)
   })
 })

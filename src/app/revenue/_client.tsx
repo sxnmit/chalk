@@ -53,12 +53,12 @@ const PRESETS = [
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
 
-function formatCurrency(n: number): string {
-  return n.toLocaleString("en-CA", {
+function formatCurrency(n: number, currency = "CAD"): string {
+  return new Intl.NumberFormat("en-CA", {
     style: "currency",
-    currency: "CAD",
+    currency,
     currencyDisplay: "narrowSymbol",
-  })
+  }).format(n)
 }
 
 function formatMethod(method: string): string {
@@ -125,6 +125,7 @@ const EMPTY: RevenueData = {
   byMethod: [],
   peakHours: new Array(24).fill(0).map((_, hour) => ({ hour, count: 0 })),
   tierBreakdown: [],
+  currency: "CAD",
 }
 
 // ── Revenue page client ────────────────────────────────────────────────────────
@@ -267,7 +268,7 @@ export function RevenuePageClient() {
 
               {/* Stat chips */}
               <div className="grid gap-3 sm:grid-cols-3">
-                <StatChip icon={<DollarSign className="h-6 w-6" />} label="Total Revenue" value={formatCurrency(data.totalRevenue)} highlight />
+                <StatChip icon={<DollarSign className="h-6 w-6" />} label="Total Revenue" value={formatCurrency(data.totalRevenue, data.currency)} highlight />
                 <StatChip icon={<Hash className="h-6 w-6" />} label="Sessions" value={String(data.sessionCount)} />
                 <StatChip icon={<Clock className="h-6 w-6" />} label="Avg Session" value={formatAvgDuration(data.avgSessionMinutes)} />
               </div>
@@ -280,14 +281,14 @@ export function RevenuePageClient() {
                     <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Breakdown</h2>
                   </div>
                   <dl className="divide-y divide-border/20">
-                    <BreakdownRow label="Table time" value={formatCurrency(data.tableRevenue)} />
-                    <BreakdownRow label="Food & drink" value={formatCurrency(data.itemsRevenue)} />
-                    <BreakdownRow label="Tax" value={formatCurrency(data.taxCollected)} />
+                    <BreakdownRow label="Table time" value={formatCurrency(data.tableRevenue, data.currency)} />
+                    <BreakdownRow label="Food & drink" value={formatCurrency(data.itemsRevenue, data.currency)} />
+                    <BreakdownRow label="Tax" value={formatCurrency(data.taxCollected, data.currency)} />
+                    <BreakdownRow label="Tips" value={formatCurrency(data.tipsCollected, data.currency)} />
                     <div className="flex items-center justify-between bg-secondary/20 px-5 py-4">
-                      <dt className="text-sm font-semibold text-foreground">Revenue</dt>
-                      <dd className="tabular-nums text-lg font-bold text-success">{formatCurrency(data.totalRevenue)}</dd>
+                      <dt className="text-sm font-semibold text-foreground">Total collected</dt>
+                      <dd className="tabular-nums text-lg font-bold text-success">{formatCurrency(data.totalRevenue, data.currency)}</dd>
                     </div>
-                    <BreakdownRow label="Tips collected" value={formatCurrency(data.tipsCollected)} />
                   </dl>
                 </div>
 
@@ -309,7 +310,7 @@ export function RevenuePageClient() {
                             {formatMethod(m.method)}
                             <span className="text-xs text-muted-foreground">({m.count})</span>
                           </dt>
-                          <dd className="tabular-nums font-semibold text-success">{formatCurrency(m.revenue)}</dd>
+                          <dd className="tabular-nums font-semibold text-success">{formatCurrency(m.revenue, data.currency)}</dd>
                         </div>
                       ))}
                     </dl>
@@ -377,7 +378,7 @@ export function RevenuePageClient() {
                         <tr key={tier.label} className="border-b border-border/20 last:border-0">
                           <td className="px-5 py-3.5 font-medium text-foreground">{tier.label}</td>
                           <td className="px-5 py-3.5 text-right tabular-nums text-muted-foreground">{tier.sessionCount}</td>
-                          <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-success">{formatCurrency(tier.revenue)}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-success">{formatCurrency(tier.revenue, data.currency)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -388,7 +389,7 @@ export function RevenuePageClient() {
                           {data.tierBreakdown.reduce((s, t) => s + t.sessionCount, 0)}
                         </td>
                         <td className="px-5 py-4 text-right tabular-nums text-xl font-bold text-success">
-                          {formatCurrency(data.tableRevenue)}
+                          {formatCurrency(data.tableRevenue, data.currency)}
                         </td>
                       </tr>
                     </tfoot>

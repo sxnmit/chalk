@@ -1,11 +1,13 @@
 "use client"
 
 import { forwardRef } from "react"
-import { formatCAD } from "@/lib/format"
+import { formatMoney } from "@/lib/format"
 import { Separator } from "@/components/ui/separator"
 
 export interface ReceiptData {
   venueName: string
+  receiptFooter?: string
+  currency?: string
   receiptNumber: string
   createdAt: string
   tableName: string
@@ -38,6 +40,8 @@ function formatDateTime(iso: string): string {
 }
 
 export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data }, ref) => {
+  const cur = data.currency ?? "CAD"
+  const fmt = (cents: number) => formatMoney(cents, cur)
   return (
     <div
       ref={ref}
@@ -79,8 +83,8 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
       {/* Table charge */}
       {!data.isTab && (
         <div className="flex justify-between mb-1">
-          <span>Table ({formatCAD(data.actualRateCharged * 100)}/hr × {formatDuration(data.durationMinutes)})</span>
-          <span className="font-medium">{formatCAD(data.tableTotalCents)}</span>
+          <span>Table ({fmt(data.actualRateCharged * 100)}/hr × {formatDuration(data.durationMinutes)})</span>
+          <span className="font-medium">{fmt(data.tableTotalCents)}</span>
         </div>
       )}
 
@@ -92,7 +96,7 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
             {data.orderItems.map((item, i) => (
               <div key={i} className="flex justify-between">
                 <span>{item.quantity}× {item.name}</span>
-                <span>{formatCAD(item.line_total_cents)}</span>
+                <span>{fmt(item.line_total_cents)}</span>
               </div>
             ))}
           </div>
@@ -106,22 +110,22 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
         {data.itemsTotalCents > 0 && (
           <div className="flex justify-between text-gray-600">
             <span>Food & drinks</span>
-            <span>{formatCAD(data.itemsTotalCents)}</span>
+            <span>{fmt(data.itemsTotalCents)}</span>
           </div>
         )}
         <div className="flex justify-between text-gray-600">
           <span>Tax</span>
-          <span>{formatCAD(data.taxCents)}</span>
+          <span>{fmt(data.taxCents)}</span>
         </div>
         {data.tipCents != null && data.tipCents > 0 && (
           <div className="flex justify-between text-gray-600">
             <span>Tip</span>
-            <span>{formatCAD(data.tipCents)}</span>
+            <span>{fmt(data.tipCents)}</span>
           </div>
         )}
         <div className="flex justify-between font-bold text-sm mt-1">
           <span>TOTAL</span>
-          <span>{formatCAD(data.grandTotalCents)}</span>
+          <span>{fmt(data.grandTotalCents)}</span>
         </div>
       </div>
 
@@ -135,9 +139,11 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
       </div>
 
       {/* Footer */}
-      <div className="text-center text-gray-400 text-[10px] mt-3">
-        Thanks for racking with Chalk.
-      </div>
+      {(data.receiptFooter || "Thank you!") && (
+        <div className="text-center text-gray-400 text-[10px] mt-3">
+          {data.receiptFooter || "Thank you!"}
+        </div>
+      )}
 
     </div>
   )

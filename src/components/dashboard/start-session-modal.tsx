@@ -12,17 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PoolTable, Rate, isPeakHour, formatCurrency } from "@/lib/pool-types"
+import { PoolTable, Rate, PeakSchedule, isPeakHour, formatCurrency } from "@/lib/pool-types"
 
 export interface StartSessionModalProps {
   table: PoolTable
   rates: Rate[]
+  peakSchedule: PeakSchedule
+  currency: string
   onConfirm: (playerName: string, rateId: string) => void
   onCancel: () => void
 }
 
-export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSessionModalProps) {
-  const currentlyPeak = isPeakHour(new Date())
+export function StartSessionModal({ table, rates, peakSchedule, currency, onConfirm, onCancel }: StartSessionModalProps) {
+  const currentlyPeak = isPeakHour(new Date(), peakSchedule)
   const playerRates = rates.filter((r) => !r.isPeakRate && r.isActive)
   const peakRate = rates.find((r) => r.isPeakRate && r.isActive)
   const tableDefaultRate = playerRates.find((r) => r.id === table.defaultRateId)
@@ -94,7 +96,7 @@ export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSe
                 <SelectContent>
                   {playerRates.map((rate) => (
                     <SelectItem key={rate.id} value={rate.id}>
-                      {rate.name} Player — {formatCurrency(rate.pricePerHour)}/hr
+                      {rate.name} Player — {formatCurrency(rate.pricePerHour, currency)}/hr
                     </SelectItem>
                   ))}
                 </SelectContent>

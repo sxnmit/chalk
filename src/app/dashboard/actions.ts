@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
-import { Rate, PoolTable, TableSession } from "@/lib/pool-types"
+import { Rate, PoolTable, TableSession, PeakSchedule } from "@/lib/pool-types"
 import { todayBoundsUTC } from "@/lib/business-day"
 
 // ── Today summary (for dashboard header chips) ─────────────────────────────────
@@ -12,12 +12,12 @@ async function loadTodaySummaryForVenue(
 ): Promise<{ totalRevenue: number; sessionCount: number }> {
   const { data: venue, error: venueError } = await supabase
     .from("venues")
-    .select("timezone")
+    .select("timezone, business_day_cutoff_hour")
     .eq("id", profile.venue_id)
     .single()
   if (venueError) { console.error("loadTodaySummary venue fetch failed:", venueError); throw new Error("Failed to load summary") }
 
-  const { gte, lt } = todayBoundsUTC(venue.timezone)
+  const { gte, lt } = todayBoundsUTC(venue.timezone, venue.business_day_cutoff_hour ?? 3)
 
   // Include both table sessions and tabs (table_id null) for this venue.
   const { data: rows, error: sessionsError } = await supabase
@@ -129,6 +129,8 @@ export async function loadDashboardData(): Promise<{
   tabs: OpenTab[]
   userRole: string
   venueName: string
+  peakSchedule: PeakSchedule
+  currency: string
   todayCompletedSessionsCount: number
 }> {
   const supabase = await createClient()
@@ -158,7 +160,7 @@ export async function loadDashboardData(): Promise<{
       .select("id, label, hourly_rate, is_default, active")
       .eq("venue_id", venueId)
       .order("hourly_rate"),
-    supabase.from("venues").select("name").eq("id", venueId).single(),
+    supabase.from("venues").select("name, peak_days, peak_start_hour, peak_end_hour, currency").eq("id", venueId).single(),
     loadTodaySummaryForVenue(supabase, { venue_id: venueId }),
   ])
 
@@ -222,12 +224,20 @@ export async function loadDashboardData(): Promise<{
     }
   })
 
+  const peakSchedule: PeakSchedule = {
+    days: venueRow?.peak_days ?? [5, 6],
+    startHour: venueRow?.peak_start_hour ?? 20,
+    endHour: venueRow?.peak_end_hour ?? 3,
+  }
+
   return {
     tables: poolTables,
     rates,
     tabs,
     userRole: role,
     venueName: venueRow?.name ?? "",
+    peakSchedule,
+    currency: venueRow?.currency ?? "CAD",
     todayCompletedSessionsCount: todaySummary.sessionCount,
   }
 }
