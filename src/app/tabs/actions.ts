@@ -51,3 +51,40 @@ export async function loadOpenTabs(): Promise<OpenTab[]> {
     totalCents: totalsBySession.get(s.id) ?? 0,
   }))
 }
+
+// Closes an open tab without recording a bill or payment. Only valid for
+// tabs that have nothing on them yet — once an item is added, the tab must
+// go through Order & Bill / checkout instead.
+export async function closeTabAction(tabId: string): Promise<void> {
+  const supabase = await createClient()
+  const { venueId } = await getProfile()
+
+  const { data: tab, error: tabError } = await supabase
+    .from("sessions")
+    .select("id")
+    .eq("id", tabId)
+    .eq("venue_id", venueId)
+    .is("table_id", null)
+    .is("ended_at", null)
+    .single()
+
+  if (tabError || !tab) throw new Error("Tab not found for this venue")
+
+  const { count, error: itemsError } = await supabase
+    .from("order_items")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", tabId)
+    .eq("venue_id", venueId)
+
+  if (itemsError) throw itemsError
+  if (count) throw new Error("Cannot close a tab that has items on it")
+
+  const { error } = await supabase
+    .from("sessions")
+    .update({ ended_at: new Date().toISOString() })
+    .eq("id", tabId)
+    .eq("venue_id", venueId)
+    .is("ended_at", null)
+
+  if (error) throw new Error("Failed to close tab")
+}
