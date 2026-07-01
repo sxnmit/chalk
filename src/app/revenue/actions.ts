@@ -79,14 +79,14 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
   for (const p of rows) {
     const session = p.sessions as unknown as SessionEmbed | null
 
-    totalRevenue += p.grand_total_cents
+    totalRevenue += p.grand_total_cents - p.tip_cents
     tableRevenue += p.table_total_cents
     itemsRevenue += p.items_total_cents
     taxCollected += p.tax_cents
     tipsCollected += p.tip_cents
 
     const m = methodMap.get(p.method) ?? { count: 0, revenue: 0 }
-    methodMap.set(p.method, { count: m.count + 1, revenue: m.revenue + p.grand_total_cents })
+    methodMap.set(p.method, { count: m.count + 1, revenue: m.revenue + p.grand_total_cents - p.tip_cents })
 
     if (session?.started_at && session.ended_at) {
       const sMs = new Date(session.started_at).getTime()

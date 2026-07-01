@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,12 @@ export function CashConfirmDialog({ open, onOpenChange, grandTotalCents, onConfi
   const [loading, setLoading] = useState(false)
   const [changeDue, setChangeDue] = useState<number | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+
+  useEffect(() => {
+    if (!confirmed) {
+      setAmountStr((grandTotalCents / 100).toFixed(2))
+    }
+  }, [grandTotalCents, confirmed])
 
   const amountCents = Math.round(parseFloat(amountStr) * 100)
   const isValid = !isNaN(amountCents) && amountCents >= grandTotalCents

@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 import { getStripe } from "@/lib/stripe"
 import { sessionTableTotalCents } from "@/lib/billing-table"
 import { getVenueTaxRate, computeTaxCents } from "@/lib/tax"
 
+const IntentSchema = z.object({
+  tip_cents: z.number().int().min(0).max(999999).default(0),
+})
+
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -14,6 +19,15 @@ export async function POST(
     const { venueId } = await getProfile()
     const { id: sessionId } = await params
     const stripe = getStripe()
+
+    let tipCents = 0
+    try {
+      const body = await request.json()
+      const parsed = IntentSchema.safeParse(body)
+      if (parsed.success) tipCents = parsed.data.tip_cents
+    } catch {
+      // No body or invalid JSON — default to 0 tip
+    }
 
     // Validate session
     const { data: session, error: sessionErr } = await supabase
@@ -42,7 +56,7 @@ export async function POST(
     const taxRate = await getVenueTaxRate(supabase, venueId)
     const subtotalCents = tableTotalCents + itemsTotalCents
     const taxCents = computeTaxCents(subtotalCents, taxRate)
-    const grandTotalCents = subtotalCents + taxCents
+    const grandTotalCents = subtotalCents + taxCents + tipCents
     const stripeAmountCents = Math.max(grandTotalCents, 50)
 
     // Check for existing pending payment
@@ -73,6 +87,7 @@ export async function POST(
               table_total_cents: tableTotalCents,
               items_total_cents: itemsTotalCents,
               tax_cents: taxCents,
+              tip_cents: tipCents,
               grand_total_cents: grandTotalCents,
               stripe_payment_intent_id: updatedIntent.id,
               status: "pending",
@@ -112,6 +127,7 @@ export async function POST(
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
           tax_cents: taxCents,
+          tip_cents: tipCents,
           grand_total_cents: grandTotalCents,
           stripe_payment_intent_id: paymentIntent.id,
           status: "pending",
@@ -130,7 +146,7 @@ export async function POST(
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
           tax_cents: taxCents,
-          tip_cents: 0,
+          tip_cents: tipCents,
           grand_total_cents: grandTotalCents,
           stripe_payment_intent_id: paymentIntent.id,
           status: "pending",

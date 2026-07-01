@@ -6,11 +6,12 @@ interface CartTotalsProps {
   tableTotalCents: number
   itemsTotalCents: number
   taxCents: number
+  tipCents?: number
   grandTotalCents: number
   loading?: boolean
 }
 
-export function CartTotals({ tableTotalCents, itemsTotalCents, taxCents, grandTotalCents, loading }: CartTotalsProps) {
+export function CartTotals({ tableTotalCents, itemsTotalCents, taxCents, tipCents, grandTotalCents, loading }: CartTotalsProps) {
   if (loading) {
     return (
       <div className="space-y-2">
@@ -39,6 +40,12 @@ export function CartTotals({ tableTotalCents, itemsTotalCents, taxCents, grandTo
         <div className="flex justify-between text-muted-foreground">
           <span>Tax</span>
           <span className="tabular-nums">{formatCAD(taxCents)}</span>
+        </div>
+      )}
+      {tipCents != null && tipCents > 0 && (
+        <div className="flex justify-between text-muted-foreground">
+          <span>Tip</span>
+          <span className="tabular-nums">{formatCAD(tipCents)}</span>
         </div>
       )}
       <Separator />
