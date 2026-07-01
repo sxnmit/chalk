@@ -151,6 +151,20 @@ function csvRow(fields: string[]): string {
   return fields.map(csvField).join(",")
 }
 
+const TOTAL_COL_INDEX = CSV_HEADER.indexOf("Total ($)")
+
+/** A row with a single label in column 0 and everything else blank (section titles, notes). */
+function labelRow(label: string): string[] {
+  return [label, ...new Array(CSV_HEADER.length - 1).fill("")]
+}
+
+function subtotalRow(totalCents: number): string[] {
+  const row = new Array(CSV_HEADER.length).fill("")
+  row[0] = "Subtotal"
+  row[TOTAL_COL_INDEX] = (totalCents / 100).toFixed(2)
+  return row
+}
+
 /**
  * CSV of completed, paid sessions for a venue over a date range — owner/manager
  * only. `from`/`to` are plain `YYYY-MM-DD` calendar dates (inclusive), matching
@@ -196,32 +210,43 @@ export async function exportSessionsCsvAction(
     .filter((p): p is typeof p & { session: ExportSessionEmbed } => !!p.session)
     .sort((a, b) => new Date(a.session.started_at).getTime() - new Date(b.session.started_at).getTime())
 
-  const lines = [csvRow(CSV_HEADER)]
+  const tableRows = rows.filter((p) => p.session.table_id !== null)
+  const tabRows = rows.filter((p) => p.session.table_id === null)
   const toDollars = (cents: number) => (cents / 100).toFixed(2)
 
-  for (const p of rows) {
+  const rowFields = (p: (typeof rows)[number]): string[] => {
     const s = p.session
     const start = new Date(s.started_at)
     const end = s.ended_at ? new Date(s.ended_at) : start
     const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 
-    lines.push(
-      csvRow([
-        businessDayOf(start, timezone),
-        s.tables?.name ?? "Tab",
-        s.player_name ?? "",
-        s.rates?.label ?? "",
-        formatLocalDateTime(start, timezone),
-        s.ended_at ? formatLocalDateTime(end, timezone) : "",
-        hours.toFixed(2),
-        toDollars(p.table_total_cents),
-        toDollars(p.items_total_cents),
-        toDollars(p.tax_cents),
-        toDollars(p.tip_cents),
-        toDollars(p.grand_total_cents),
-        p.method,
-      ])
-    )
+    return [
+      businessDayOf(start, timezone),
+      s.tables?.name ?? "",
+      s.player_name ?? "",
+      s.rates?.label ?? "",
+      formatLocalDateTime(start, timezone),
+      s.ended_at ? formatLocalDateTime(end, timezone) : "",
+      hours.toFixed(2),
+      toDollars(p.table_total_cents),
+      toDollars(p.items_total_cents),
+      toDollars(p.tax_cents),
+      toDollars(p.tip_cents),
+      toDollars(p.grand_total_cents),
+      p.method,
+    ]
+  }
+
+  const lines = [csvRow(CSV_HEADER)]
+
+  for (const [title, group] of [["Pool Tables", tableRows], ["Bar Tabs", tabRows]] as const) {
+    lines.push(csvRow(labelRow(title)))
+    if (group.length === 0) {
+      lines.push(csvRow(labelRow("No sessions in this range")))
+      continue
+    }
+    for (const p of group) lines.push(csvRow(rowFields(p)))
+    lines.push(csvRow(subtotalRow(group.reduce((sum, p) => sum + p.grand_total_cents, 0))))
   }
 
   const venueSlug = (venue?.name ?? "venue")
