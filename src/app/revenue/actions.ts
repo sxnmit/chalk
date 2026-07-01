@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
-import { businessDayRangeUTC } from "@/lib/business-day"
+import { businessDayRangeUTC, businessDayOf, formatLocalDateTime } from "@/lib/business-day"
 
 export interface RevenueData {
   totalRevenue: number        // grand total collected (table + items + tax + tip)
@@ -124,5 +124,113 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
     tierBreakdown: [...tierMap.entries()]
       .map(([label, d]) => ({ label, sessionCount: d.sessionCount, revenue: toDollars(d.revenue) }))
       .sort((a, b) => b.revenue - a.revenue),
+  }
+}
+
+// ── CSV export ─────────────────────────────────────────────────────────────────
+
+interface ExportSessionEmbed {
+  started_at: string
+  ended_at: string | null
+  player_name: string | null
+  table_id: string | null
+  rates: { label: string } | null
+  tables: { name: string } | null
+}
+
+const CSV_HEADER = [
+  "Date", "Table", "Player", "Rate", "Start", "End", "Duration (hrs)",
+  "Table ($)", "Items ($)", "Tax ($)", "Tip ($)", "Total ($)", "Payment Method",
+]
+
+function csvField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
+function csvRow(fields: string[]): string {
+  return fields.map(csvField).join(",")
+}
+
+/**
+ * CSV of completed, paid sessions for a venue over a date range — owner/manager
+ * only. `from`/`to` are plain `YYYY-MM-DD` calendar dates (inclusive), matching
+ * the same 3am→3am venue-local business day used by `loadRevenueData`.
+ */
+export async function exportSessionsCsvAction(
+  from: string,
+  to: string
+): Promise<{ filename: string; csv: string }> {
+  const supabase = await createClient()
+  const { venueId, role } = await getProfile()
+  if (role !== "owner" && role !== "manager") throw new Error("Not authorized")
+
+  if (!from || !to) throw new Error("Both from and to dates are required")
+  if (from > to) throw new Error("Start date must be on or before end date")
+  const spanDays =
+    (new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / (24 * 60 * 60 * 1000)
+  if (spanDays > 366) throw new Error("Date range cannot exceed 1 year")
+
+  const { data: venue } = await supabase
+    .from("venues")
+    .select("name, timezone")
+    .eq("id", venueId)
+    .single()
+
+  const timezone = venue?.timezone ?? "UTC"
+  const { gte, lt } = businessDayRangeUTC(from, to, timezone)
+
+  const { data: payments, error } = await supabase
+    .from("payments")
+    .select(
+      "grand_total_cents, table_total_cents, items_total_cents, tax_cents, tip_cents, method, sessions!inner(started_at, ended_at, player_name, table_id, rates(label), tables(name))"
+    )
+    .eq("venue_id", venueId)
+    .eq("status", "succeeded")
+    .gte("sessions.started_at", gte)
+    .lt("sessions.started_at", lt)
+
+  if (error) throw error
+
+  const rows = (payments ?? [])
+    .map((p) => ({ ...p, session: p.sessions as unknown as ExportSessionEmbed | null }))
+    .filter((p): p is typeof p & { session: ExportSessionEmbed } => !!p.session)
+    .sort((a, b) => new Date(a.session.started_at).getTime() - new Date(b.session.started_at).getTime())
+
+  const lines = [csvRow(CSV_HEADER)]
+  const toDollars = (cents: number) => (cents / 100).toFixed(2)
+
+  for (const p of rows) {
+    const s = p.session
+    const start = new Date(s.started_at)
+    const end = s.ended_at ? new Date(s.ended_at) : start
+    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+
+    lines.push(
+      csvRow([
+        businessDayOf(start, timezone),
+        s.tables?.name ?? "Tab",
+        s.player_name ?? "",
+        s.rates?.label ?? "",
+        formatLocalDateTime(start, timezone),
+        s.ended_at ? formatLocalDateTime(end, timezone) : "",
+        hours.toFixed(2),
+        toDollars(p.table_total_cents),
+        toDollars(p.items_total_cents),
+        toDollars(p.tax_cents),
+        toDollars(p.tip_cents),
+        toDollars(p.grand_total_cents),
+        p.method,
+      ])
+    )
+  }
+
+  const venueSlug = (venue?.name ?? "venue")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+
+  return {
+    filename: `chalk-sessions-${venueSlug}-${from}-to-${to}.csv`,
+    csv: lines.join("\r\n"),
   }
 }

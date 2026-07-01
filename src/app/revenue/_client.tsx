@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote } from "lucide-react"
+import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote, Download } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Calendar } from "@/components/ui/calendar"
 import { PopoverRoot, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { loadRevenueData, RevenueData } from "./actions"
+import { loadRevenueData, exportSessionsCsvAction, RevenueData } from "./actions"
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -137,6 +137,9 @@ export function RevenuePageClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
   const fetchData = useCallback(async (from: Date, to: Date) => {
     setLoading(true)
     setError(null)
@@ -166,6 +169,28 @@ export function RevenuePageClient() {
     setPickerOpen(false)
   }, [])
 
+  const handleExport = useCallback(async () => {
+    if (!range.from || !range.to) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      const { filename, csv } = await exportSessionsCsvAction(fmtISODate(range.from), fmtISODate(range.to))
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: unknown) {
+      setExportError(e instanceof Error ? e.message : "Failed to export CSV.")
+    } finally {
+      setExporting(false)
+    }
+  }, [range])
+
   const maxCount = Math.max(1, ...data.peakHours.map((h) => h.count))
 
   return (
@@ -188,42 +213,53 @@ export function RevenuePageClient() {
                 <p className="mt-1 text-sm text-muted-foreground">Track session revenue and peak hours.</p>
               </div>
             </div>
-            <PopoverRoot open={pickerOpen} onOpenChange={setPickerOpen}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary">
-                  <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="hidden sm:inline">
-                    {rangeLabel(range.from, range.to)}
-                  </span>
-                  <span className="sm:hidden text-muted-foreground text-xs">
-                    {range.from ? fmtShort(range.from) : "Date"}
-                  </span>
-                </button>
-              </PopoverTrigger>
+            <div className="flex items-center gap-2">
+              <PopoverRoot open={pickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary">
+                    <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="hidden sm:inline">
+                      {rangeLabel(range.from, range.to)}
+                    </span>
+                    <span className="sm:hidden text-muted-foreground text-xs">
+                      {range.from ? fmtShort(range.from) : "Date"}
+                    </span>
+                  </button>
+                </PopoverTrigger>
 
-              <PopoverContent className="p-0 w-auto" align="end">
-                <Calendar
-                  mode="range"
-                  selected={range}
-                  onSelect={handleRangeSelect}
-                  numberOfMonths={1}
-                  disabled={{ after: new Date() }}
-                  defaultMonth={range.from}
-                />
-                <div className="border-t border-border/50 px-3 py-2 flex flex-wrap gap-1.5">
-                  {PRESETS.map((p) => (
-                    <button
-                      key={p.label}
-                      onClick={() => applyPreset(p.range())}
-                      className="rounded-lg border border-border/50 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </PopoverRoot>
+                <PopoverContent className="p-0 w-auto" align="end">
+                  <Calendar
+                    mode="range"
+                    selected={range}
+                    onSelect={handleRangeSelect}
+                    numberOfMonths={1}
+                    disabled={{ after: new Date() }}
+                    defaultMonth={range.from}
+                  />
+                  <div className="border-t border-border/50 px-3 py-2 flex flex-wrap gap-1.5">
+                    {PRESETS.map((p) => (
+                      <button
+                        key={p.label}
+                        onClick={() => applyPreset(p.range())}
+                        className="rounded-lg border border-border/50 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </PopoverRoot>
+              <button
+                onClick={handleExport}
+                disabled={exporting || !range.from || !range.to}
+                className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="hidden sm:inline">{exporting ? "Exporting…" : "Export CSV"}</span>
+              </button>
+            </div>
           </div>
+          {exportError && <p className="mb-4 text-sm text-destructive">{exportError}</p>}
           {error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : (
