@@ -64,9 +64,13 @@ export function StartTabModal({ onConfirm, onCancel }: StartTabModalProps) {
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder='e.g. "Bar 3" or guest name'
+              maxLength={30}
               autoFocus
               className="border-border/50 focus:border-primary"
             />
+            {playerName.length >= 30 && (
+              <p className="text-xs text-destructive">30-character limit reached</p>
+            )}
           </div>
 
           {error && (

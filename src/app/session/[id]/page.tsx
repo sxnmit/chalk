@@ -201,8 +201,8 @@ export default function SessionPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <div>
-            <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{headerTitle}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-bold text-foreground font-[family-name:var(--font-exo2)]">{headerTitle}</h1>
             <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
           </div>
         </div>
@@ -219,9 +219,9 @@ export default function SessionPage() {
               <span className="text-xs font-medium text-primary">LIVE</span>
             </div>
             {session.playerName && (
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <User className="h-3.5 w-3.5" />
-                {session.playerName}
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0">
+                <User className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{session.playerName}</span>
               </div>
             )}
           </div>

@@ -69,8 +69,12 @@ export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSe
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Enter player name"
+              maxLength={30}
               className="border-border/50 focus:border-primary"
             />
+            {playerName.length >= 30 && (
+              <p className="text-xs text-destructive">30-character limit reached</p>
+            )}
           </div>
 
           {/* Player type selector — hidden during peak hours */}

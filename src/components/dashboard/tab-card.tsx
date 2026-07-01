@@ -32,8 +32,8 @@ export function TabCard({ tab, onCloseTab }: TabCardProps) {
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <ShoppingBag className="h-5 w-5" />
         </div>
-        <div>
-          <h3 className="font-semibold text-foreground">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-semibold text-foreground">
             {tab.playerName || "Tab"}
           </h3>
           <span className="text-sm text-primary">Open tab</span>
