@@ -46,15 +46,33 @@ export function businessDayStartUTC(dateStr: string, timezone: string): Date {
   return new Date(boundaryBase.getTime() + offsetMs)
 }
 
+/** Venue-local business-day date (`YYYY-MM-DD`) for a UTC instant — an instant before the 3am cutoff counts toward the previous calendar day. */
+export function businessDayOf(d: Date, timezone: string): string {
+  return hourInTz(d, timezone) < CUTOFF_HOUR
+    ? dateStringInTz(new Date(d.getTime() - DAY_MS), timezone)
+    : dateStringInTz(d, timezone)
+}
+
 /** UTC bounds [gte, lt) of the current business day (3am→3am venue-local). */
 export function todayBoundsUTC(timezone: string): { gte: string; lt: string } {
-  const now = new Date()
-  const businessDate =
-    hourInTz(now, timezone) < CUTOFF_HOUR
-      ? dateStringInTz(new Date(now.getTime() - DAY_MS), timezone)
-      : dateStringInTz(now, timezone)
-  const start = businessDayStartUTC(businessDate, timezone)
+  const start = businessDayStartUTC(businessDayOf(new Date(), timezone), timezone)
   return { gte: start.toISOString(), lt: new Date(start.getTime() + DAY_MS).toISOString() }
+}
+
+/** Venue-local `YYYY-MM-DD HH:mm:ss` for a UTC instant. */
+export function formatLocalDateTime(d: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  })
+    .formatToParts(d)
+    .reduce<Record<string, string>>((acc, { type, value }) => {
+      if (type !== "literal") acc[type] = value
+      return acc
+    }, {})
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 /**
