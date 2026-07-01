@@ -34,6 +34,7 @@ export default function CheckoutPage() {
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [intentLoading, setIntentLoading] = useState(false)
   const [cashOpen, setCashOpen] = useState(false)
+  const [cashPaymentId, setCashPaymentId] = useState<string | null>(null)
   const [stripeError, setStripeError] = useState<string | null>(null)
 
   const loadTotals = useCallback(async () => {
@@ -91,19 +92,25 @@ export default function CheckoutPage() {
   }
 
   async function handleCashConfirm(amountReceivedCents: number) {
-    try {
-      const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "cash" }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setCashOpen(false)
-      router.push(`/session/${sessionId}/receipt?payment_id=${data.payment_id}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Cash payment failed")
+    const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "cash" }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Cash payment failed")
+      throw new Error(data.error)
     }
+    setCashPaymentId(data.payment_id)
+  }
+
+  function handleCashDialogClose(open: boolean) {
+    if (!open && cashPaymentId) {
+      router.push(`/session/${sessionId}/receipt?payment_id=${cashPaymentId}`)
+      return
+    }
+    setCashOpen(open)
   }
 
   const returnUrl = typeof window !== "undefined"
@@ -231,7 +238,7 @@ export default function CheckoutPage() {
       {totals && (
         <CashConfirmDialog
           open={cashOpen}
-          onOpenChange={setCashOpen}
+          onOpenChange={handleCashDialogClose}
           grandTotalCents={totals.grand_total_cents}
           onConfirm={handleCashConfirm}
         />
