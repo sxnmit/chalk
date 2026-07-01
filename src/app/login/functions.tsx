@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
+import Link from "next/link"
 import { AvatarIcon } from "@/components/icons/radix-icons-avatar"
 import { LockClosedIcon } from "@/components/icons/radix-icons-lock-closed"
 import { loginAction } from "./actions"
@@ -43,6 +44,12 @@ export function LoginForm() {
       {error && (
         <p className="text-xs text-[#f87171] text-center">{error}</p>
       )}
+      <Link
+        href="/forgot-password"
+        className="mt-1 block text-center text-xs text-white/40 transition-colors hover:text-primary"
+      >
+        Forgot your password?
+      </Link>
     </form>
   )
 }
