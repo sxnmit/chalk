@@ -129,7 +129,6 @@ export async function loadDashboardData(): Promise<{
   tabs: OpenTab[]
   userRole: string
   venueName: string
-  todayRevenue: number
   todayCompletedSessionsCount: number
 }> {
   const supabase = await createClient()
@@ -229,7 +228,6 @@ export async function loadDashboardData(): Promise<{
     tabs,
     userRole: role,
     venueName: venueRow?.name ?? "",
-    todayRevenue: todaySummary.totalRevenue,
     todayCompletedSessionsCount: todaySummary.sessionCount,
   }
 }
