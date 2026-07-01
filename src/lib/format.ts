@@ -1,7 +1,12 @@
-export function formatCAD(cents: number): string {
-  return new Intl.NumberFormat("en-CA", {
+export function formatMoney(cents: number, currency = "CAD"): string {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "CAD",
+    currency,
+    currencyDisplay: "narrowSymbol",
     minimumFractionDigits: 2,
   }).format(cents / 100)
+}
+
+export function formatCAD(cents: number): string {
+  return formatMoney(cents, "CAD")
 }

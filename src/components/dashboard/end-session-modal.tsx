@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import {
   PoolTable,
   Rate,
+  PeakSchedule,
   calculateAmountOwed,
   formatDuration,
   formatTime,
@@ -14,18 +15,20 @@ import {
 export interface EndSessionModalProps {
   table: PoolTable
   rates: Rate[]
+  peakSchedule: PeakSchedule
+  currency: string
   onConfirm: () => void
   onCancel: () => void
 }
 
-export function EndSessionModal({ table, rates, onConfirm, onCancel }: EndSessionModalProps) {
+export function EndSessionModal({ table, rates, peakSchedule, currency, onConfirm, onCancel }: EndSessionModalProps) {
   const { session } = table
   if (!session) return null
 
   const rate = rates.find((r) => r.id === session.rateId)
   const peakRate = rates.reduce((max, r) => Math.max(max, r.pricePerHour), 0)
   const endTime = new Date()
-  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate, endTime)
+  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate, endTime, peakSchedule)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -73,7 +76,7 @@ export function EndSessionModal({ table, rates, onConfirm, onCancel }: EndSessio
           <div className="flex justify-between">
             <span className="text-muted-foreground">Rate</span>
             <span className="text-foreground">
-              {rate?.name} ({formatCurrency(rate?.pricePerHour ?? 25)}/hr)
+              {rate?.name} ({formatCurrency(rate?.pricePerHour ?? 25, currency)}/hr)
             </span>
           </div>
 
@@ -82,7 +85,7 @@ export function EndSessionModal({ table, rates, onConfirm, onCancel }: EndSessio
           {/* Total — most prominent */}
           <div className="flex items-center justify-between rounded-lg bg-success/10 p-4">
             <span className="text-lg font-medium text-foreground">Amount Owed</span>
-            <span className="text-3xl font-bold text-success">{formatCurrency(amountOwed)}</span>
+            <span className="text-3xl font-bold text-success">{formatCurrency(amountOwed, currency)}</span>
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
