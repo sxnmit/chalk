@@ -103,7 +103,7 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-xl border transition-all ${isOccupied
+      className={`group relative flex h-full flex-col overflow-hidden rounded-xl border transition-all ${isOccupied
         ? "border-primary/50 bg-card shadow-lg shadow-primary/10"
         : "border-border/50 bg-card hover:border-border"
         }`}
