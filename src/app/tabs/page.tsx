@@ -8,13 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { TabCard } from "@/components/dashboard/tab-card"
 import { StartTabModal } from "@/components/dashboard/start-tab-modal"
+import { CloseTabModal } from "@/components/dashboard/close-tab-modal"
 import { startTabAction, type OpenTab } from "@/app/dashboard/actions"
-import { loadOpenTabs } from "./actions"
+import { loadOpenTabs, closeTabAction } from "./actions"
 
 export default function TabsPage() {
   const [tabs, setTabs] = useState<OpenTab[]>([])
   const [loading, setLoading] = useState(true)
   const [startTabOpen, setStartTabOpen] = useState(false)
+  const [closeModalTab, setCloseModalTab] = useState<OpenTab | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -41,6 +43,27 @@ export default function TabsPage() {
     },
     [load]
   )
+
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId)
+      if (tab && tab.items.length === 0) setCloseModalTab(tab)
+    },
+    [tabs]
+  )
+
+  const handleConfirmClose = useCallback(async () => {
+    if (!closeModalTab) return
+    try {
+      await closeTabAction(closeModalTab.id)
+      await load()
+    } catch (err) {
+      console.error("Failed to close tab:", err)
+      toast.error("Failed to close tab")
+    } finally {
+      setCloseModalTab(null)
+    }
+  }, [closeModalTab, load])
 
   return (
     <SidebarPageLayout>
@@ -111,7 +134,7 @@ export default function TabsPage() {
                       className="animate-card-in"
                       style={{ animationDelay: `${i * 60}ms` }}
                     >
-                      <TabCard tab={tab} />
+                      <TabCard tab={tab} onCloseTab={handleCloseTab} />
                     </div>
                   ))}
                 </div>
@@ -123,6 +146,14 @@ export default function TabsPage() {
             <StartTabModal
               onConfirm={handleConfirmStartTab}
               onCancel={() => setStartTabOpen(false)}
+            />
+          )}
+
+          {closeModalTab && (
+            <CloseTabModal
+              tab={closeModalTab}
+              onConfirm={handleConfirmClose}
+              onCancel={() => setCloseModalTab(null)}
             />
           )}
         </>
