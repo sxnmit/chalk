@@ -57,9 +57,9 @@ function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
       {/* Timer + player */}
       <div className="flex flex-col gap-2">
         {session.playerName && (
-          <div className="flex items-center gap-2 text-foreground">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{session.playerName}</span>
+          <div className="flex items-center gap-2 text-foreground min-w-0">
+            <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate font-medium">{session.playerName}</span>
           </div>
         )}
         <div className="flex items-center justify-center gap-3">
@@ -122,8 +122,8 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
       {/* Table identity */}
       <div className="flex items-center gap-3 p-4 pb-2">
         <PoolBall number={table.tableNumber} size="md" />
-        <div>
-          <h3 className="font-semibold text-foreground">{table.name}</h3>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-semibold text-foreground">{table.name}</h3>
           <span className={`text-sm ${isOccupied ? "text-primary" : "text-muted-foreground"}`}>
             {isOccupied ? "Occupied" : "Free"}
           </span>

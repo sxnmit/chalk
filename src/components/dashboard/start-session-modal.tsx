@@ -69,6 +69,7 @@ export function StartSessionModal({ table, rates, onConfirm, onCancel }: StartSe
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Enter player name"
+              maxLength={30}
               className="border-border/50 focus:border-primary"
             />
           </div>

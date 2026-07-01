@@ -233,6 +233,10 @@ export async function loadDashboardData(): Promise<{
 }
 
 export async function startTabAction(playerName?: string): Promise<{ id: string }> {
+  if (playerName && playerName.length > 30) {
+    throw new Error("Name too long")
+  }
+
   const supabase = await createClient()
   const { venueId, userId } = await getProfileFromToken(supabase)
 
@@ -259,8 +263,8 @@ export async function startSessionAction(
   rateId: string,
   playerName?: string
 ): Promise<void> {
-  if (playerName && playerName.length > 100) {
-    throw new Error("Player name too long")
+  if (playerName && playerName.length > 30) {
+    throw new Error("Name too long")
   }
 
   const supabase = await createClient()
