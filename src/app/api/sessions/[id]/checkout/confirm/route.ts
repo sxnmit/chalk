@@ -106,36 +106,37 @@ export async function POST(
       return NextResponse.json({ ok: true, payment_id: data.id })
     }
 
-    // Cash flow — only reuse a row that hasn't already been bound to a Stripe
-    // PaymentIntent. Otherwise a prior card attempt's pending row would be
-    // silently relabeled as a successful cash payment.
+    // Cash flow — reuse any existing payment row for this session (whether
+    // from a prior card attempt or a previous cash attempt) so we don't
+    // violate the unique constraint on session_id.
     const { data: existing } = await supabase
       .from("payments")
-      .select("id, stripe_payment_intent_id, status")
+      .select("id, status")
       .eq("session_id", sessionId)
       .eq("venue_id", venueId)
-      .is("stripe_payment_intent_id", null)
       .neq("status", "succeeded")
       .maybeSingle()
 
     let paymentId: string
     if (existing) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("payments")
         .update({
           method: "cash",
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
           grand_total_cents: grandTotalCents,
+          stripe_payment_intent_id: null,
           status: "succeeded",
         })
         .eq("id", existing.id)
         .eq("venue_id", venueId)
         .select("id")
         .single()
-      paymentId = data!.id
+      if (error || !data) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
+      paymentId = data.id
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("payments")
         .insert({
           venue_id: venueId,
@@ -150,13 +151,18 @@ export async function POST(
         })
         .select("id")
         .single()
-      paymentId = data!.id
+      if (error || !data) return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
+      paymentId = data.id
     }
 
     await closeSession(supabase, venueId, sessionId, now)
     return NextResponse.json({ ok: true, payment_id: paymentId })
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  } catch (e) {
+    const isAuthError = e instanceof Error && (e.message === "Not authenticated" || e.message.includes("no venue"))
+    return NextResponse.json(
+      { error: isAuthError ? "Unauthorized" : "Internal server error" },
+      { status: isAuthError ? 401 : 500 },
+    )
   }
 }
 
