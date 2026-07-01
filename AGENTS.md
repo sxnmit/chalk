@@ -83,8 +83,6 @@ sessions (
 - **Always snapshot `actual_rate_charged`** on the session row at start time — never recalculate from the rate table
 - **RLS is currently disabled** for development — do not enable without explicit instruction
 - **All queries must be scoped to `venue_id`** — a logged-in user belongs to exactly one venue; every table/session/rate/revenue query must be filtered by that venue. Obtain venue_id via `getProfileFromToken(supabase)` inside every server action (reads JWT claims, no DB query)
-- **No test suite until v2**
-
 ---
 
 ## File & Route Structure

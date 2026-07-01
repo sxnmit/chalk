@@ -25,7 +25,6 @@ afterEach(() => vi.useRealTimers())
 
 describe("GET /api/sessions/[id]/totals", () => {
   it("computes table time from elapsed hours and aggregates order items", async () => {
-    // Session started two hours before "now" at $30/hr → $60.00 = 6000 cents.
     vi.setSystemTime(new Date("2026-06-28T14:00:00Z"))
     mockedCreateClient.mockResolvedValue(
       createMockClient({
@@ -47,6 +46,7 @@ describe("GET /api/sessions/[id]/totals", () => {
             ],
             error: null,
           },
+          venues: { data: { tax_rate: 0 }, error: null },
         },
       }) as never
     )
@@ -56,9 +56,41 @@ describe("GET /api/sessions/[id]/totals", () => {
 
     expect(body.table_total_cents).toBe(6000)
     expect(body.items_total_cents).toBe(1350) // 2*500 + 1*350
+    expect(body.tax_cents).toBe(0)
     expect(body.grand_total_cents).toBe(7350)
     expect(body.order_items).toHaveLength(2)
     expect(body.order_items[0]).toMatchObject({ name: "Wings", line_total_cents: 1000 })
+  })
+
+  it("includes tax when the venue has a tax rate configured", async () => {
+    vi.setSystemTime(new Date("2026-06-28T13:00:00Z"))
+    mockedCreateClient.mockResolvedValue(
+      createMockClient({
+        session: makeSession("u1", { venue_id: "v1", role: "owner" }),
+        tables: {
+          sessions: {
+            data: { id: "s1", venue_id: "v1", started_at: "2026-06-28T12:00:00Z", actual_rate_charged: 20 },
+            error: null,
+          },
+          order_items: {
+            data: [
+              { id: "oi1", menu_item_id: "m1", quantity: 1, price_at_time_cents: 1000, menu_items: { name: "Nachos" } },
+            ],
+            error: null,
+          },
+          venues: { data: { tax_rate: 13 }, error: null },
+        },
+      }) as never
+    )
+
+    const res = await GET({} as never, params("s1"))
+    const body = await res.json()
+
+    // table: 1h * $20 = 2000, items: 1000, subtotal: 3000, tax: 3000 * 0.13 = 390
+    expect(body.table_total_cents).toBe(2000)
+    expect(body.items_total_cents).toBe(1000)
+    expect(body.tax_cents).toBe(390)
+    expect(body.grand_total_cents).toBe(3390)
   })
 
   it("returns 404 when the session is not found", async () => {
@@ -85,6 +117,7 @@ describe("GET /api/sessions/[id]/totals", () => {
             error: null,
           },
           order_items: { data: [], error: null },
+          venues: { data: { tax_rate: 0 }, error: null },
         },
       }) as never
     )
