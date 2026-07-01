@@ -9,7 +9,7 @@ import { vi } from "vitest"
  * return `this`, makes the builder thenable, and resolves every terminal to the
  * one `{ data, error }` result configured for the table it was opened on.
  */
-export type QueryResult = { data?: unknown; error?: unknown }
+export type QueryResult = { data?: unknown; error?: unknown; count?: number | null }
 
 type TableResult = QueryResult | (() => QueryResult)
 
