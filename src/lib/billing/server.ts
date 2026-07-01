@@ -134,7 +134,7 @@ export async function loadSubscriptionSummary(venueId: string): Promise<Subscrip
   const { data, error } = await admin
     .from("subscriptions")
     .select(
-      "venue_id, status, stripe_customer_id, stripe_subscription_id, stripe_price_id, trial_ends_at, current_period_end, cancel_at_period_end"
+      "venue_id, status, stripe_customer_id, stripe_subscription_id, stripe_price_id, current_period_end, cancel_at_period_end"
     )
     .eq("venue_id", venueId)
     .maybeSingle()
@@ -155,7 +155,6 @@ export async function loadSubscriptionSummary(venueId: string): Promise<Subscrip
       stripeCustomerId: venue?.stripe_customer_id ?? null,
       stripeSubscriptionId: null,
       stripePriceId: null,
-      trialEndsAt: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
     }
@@ -167,7 +166,6 @@ export async function loadSubscriptionSummary(venueId: string): Promise<Subscrip
     stripeCustomerId: data.stripe_customer_id,
     stripeSubscriptionId: data.stripe_subscription_id,
     stripePriceId: data.stripe_price_id,
-    trialEndsAt: data.trial_ends_at,
     currentPeriodEnd: data.current_period_end,
     cancelAtPeriodEnd: data.cancel_at_period_end,
   }

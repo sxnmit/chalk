@@ -39,7 +39,6 @@ async function upsertSubscription(subscription: Stripe.Subscription) {
       stripe_subscription_id: subscription.id,
       stripe_price_id: priceId,
       status: subscription.status,
-      trial_ends_at: toIso(subscription.trial_end),
       current_period_end: toIso(subscription.billing_schedules?.[0]?.bill_until?.computed_timestamp ?? null),
       cancel_at_period_end: subscription.cancel_at_period_end,
       updated_at: new Date().toISOString(),
