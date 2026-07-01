@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Exo_2 } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { TrialBanner } from "@/components/billing/trial-banner";
 import { DunningBanner } from "@/components/billing/dunning-banner";
 
 const dmSans = DM_Sans({
@@ -38,7 +37,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-exo2)]">
           {children}
-          <TrialBanner />
           <DunningBanner />
           <Toaster />
         </body>

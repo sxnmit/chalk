@@ -209,7 +209,6 @@ describe("loadSubscriptionSummary", () => {
               stripe_customer_id: "cus_1",
               stripe_subscription_id: "sub_1",
               stripe_price_id: "price_1",
-              trial_ends_at: null,
               current_period_end: "2026-07-01",
               cancel_at_period_end: false,
             },
@@ -243,7 +242,6 @@ describe("loadSubscriptionSummary", () => {
       stripeCustomerId: "cus_legacy",
       stripeSubscriptionId: null,
       stripePriceId: null,
-      trialEndsAt: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
     })

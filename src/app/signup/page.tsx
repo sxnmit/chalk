@@ -98,7 +98,7 @@ function SignupForm() {
     >
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-white sm:text-2xl">Create your account</h1>
-        <p className="mt-1 text-sm text-white/40">Start your Chalk trial</p>
+        <p className="mt-1 text-sm text-white/40">Get started with Chalk</p>
       </div>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">

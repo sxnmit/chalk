@@ -10,7 +10,7 @@ The current app supports both the original Shy Lounge pilot path and self-serve 
 
 ### SaaS platform capabilities
 
-- **Self-serve signup and onboarding**: new owners create an account, set up a venue, start a trial subscription, optionally invite staff, and complete onboarding.
+- **Self-serve signup and onboarding**: new owners create an account, set up a venue, subscribe via Stripe Checkout, optionally invite staff, and complete onboarding.
 - **Stripe subscription billing**: each venue is mapped to a Stripe Customer and subscription. Owners can open the Stripe Billing Portal, and Stripe webhooks sync subscription state back into Supabase.
 - **Subscription access control**: protected app routes require authentication, a venue membership, completed onboarding, and a non-blocked subscription. Mutating APIs return `402` when the subscription is inactive.
 - **Multi-tenant venue isolation**: app data is scoped by the authenticated user's venue through JWT claims and membership fallbacks.
@@ -121,7 +121,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 INVITE_EMAIL_PROVIDER=supabase
 ```
 
-`STRIPE_PRICE_ID_CHALK_MONTHLY` is optional for local onboarding experiments, but without it onboarding creates only the local subscription row/trial metadata and no Stripe subscription object.
+`STRIPE_PRICE_ID_CHALK_MONTHLY` is required for onboarding — it powers the Stripe Checkout session that collects payment when a new venue subscribes.
 
 ---
 

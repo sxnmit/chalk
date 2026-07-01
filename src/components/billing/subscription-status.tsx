@@ -19,7 +19,7 @@ function formatDate(value: string | null) {
 
 export function SubscriptionStatus({ subscription }: { subscription: SubscriptionSummary }) {
   const variant =
-    subscription.status === "active" || subscription.status === "trialing"
+    subscription.status === "active"
       ? "default"
       : subscription.status === "past_due"
         ? "destructive"
@@ -36,15 +36,9 @@ export function SubscriptionStatus({ subscription }: { subscription: Subscriptio
           {labelForStatus(subscription.status)}
         </Badge>
       </div>
-      <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-        <div>
-          <p className="text-muted-foreground">Trial ends</p>
-          <p className="font-medium">{formatDate(subscription.trialEndsAt)}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Next bill</p>
-          <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
-        </div>
+      <div className="mt-5 text-sm">
+        <p className="text-muted-foreground">Next bill</p>
+        <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
       </div>
     </div>
   )
