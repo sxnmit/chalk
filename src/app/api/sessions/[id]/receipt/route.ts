@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import Stripe from "stripe"
 import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
-import { getStripe } from "@/lib/stripe"
 
 export async function GET(
   request: NextRequest,
@@ -44,18 +42,6 @@ export async function GET(
 
     if (itemsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
-    let cardLast4: string | null = null
-    if (payment.stripe_payment_intent_id && payment.method === "card") {
-      try {
-        const stripe = getStripe()
-        const pi = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, {
-          expand: ["latest_charge.payment_method_details"],
-        })
-        const charge = pi.latest_charge as Stripe.Charge | null
-        cardLast4 = charge?.payment_method_details?.card?.last4 ?? null
-      } catch {}
-    }
-
     const startedAt = session.started_at
     const endedAt = session.ended_at ?? new Date().toISOString()
     const durationMinutes = Math.round(
@@ -88,7 +74,7 @@ export async function GET(
       tipCents: payment.tip_cents,
       grandTotalCents: payment.grand_total_cents,
       method: payment.method,
-      cardLast4,
+      cardLast4: null,
     })
   } catch (e) {
     console.error("Receipt generation failed:", e)
