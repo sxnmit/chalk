@@ -84,6 +84,10 @@ export function EndSessionModal({ table, rates, onConfirm, onCancel }: EndSessio
             <span className="text-lg font-medium text-foreground">Amount Owed</span>
             <span className="text-3xl font-bold text-success">{formatCurrency(amountOwed)}</span>
           </div>
+
+          <p className="text-xs text-center text-muted-foreground">
+            This will end the session without recording a payment. Revenue from this session won&apos;t appear in daily totals.
+          </p>
         </div>
 
         <div className="mt-6 flex gap-3">
@@ -92,9 +96,10 @@ export function EndSessionModal({ table, rates, onConfirm, onCancel }: EndSessio
           </Button>
           <Button
             onClick={onConfirm}
-            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+            variant="destructive"
+            className="flex-1"
           >
-            Close Session
+            End Without Billing
           </Button>
         </div>
       </div>
