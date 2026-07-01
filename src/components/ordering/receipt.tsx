@@ -18,6 +18,7 @@ export interface ReceiptData {
   tableTotalCents: number
   itemsTotalCents: number
   taxCents: number
+  tipCents?: number
   grandTotalCents: number
   method: "card" | "cash" | "terminal"
   cardLast4?: string | null
@@ -112,6 +113,12 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
           <span>Tax</span>
           <span>{formatCAD(data.taxCents)}</span>
         </div>
+        {data.tipCents != null && data.tipCents > 0 && (
+          <div className="flex justify-between text-gray-600">
+            <span>Tip</span>
+            <span>{formatCAD(data.tipCents)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-bold text-sm mt-1">
           <span>TOTAL</span>
           <span>{formatCAD(data.grandTotalCents)}</span>

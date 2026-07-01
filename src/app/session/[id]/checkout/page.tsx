@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { CartTotals } from "@/components/ordering/cart-totals"
+import { TipSelector } from "@/components/ordering/tip-selector"
 import { StripePaymentForm } from "@/components/ordering/stripe-payment-form"
 import { CashConfirmDialog } from "@/components/ordering/cash-confirm-dialog"
 import { formatCAD } from "@/lib/format"
@@ -30,6 +31,7 @@ export default function CheckoutPage() {
   const [method, setMethod] = useState<Method>(null)
   const [totals, setTotals] = useState<Totals | null>(null)
   const [totalsLoading, setTotalsLoading] = useState(true)
+  const [tipCents, setTipCents] = useState(0)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [intentLoading, setIntentLoading] = useState(false)
@@ -78,7 +80,11 @@ export default function CheckoutPage() {
     setMethod("card")
     setIntentLoading(true)
     try {
-      const res = await fetch(`/api/sessions/${sessionId}/checkout/intent`, { method: "POST" })
+      const res = await fetch(`/api/sessions/${sessionId}/checkout/intent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tip_cents: tipCents }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setClientSecret(data.client_secret)
@@ -95,7 +101,7 @@ export default function CheckoutPage() {
     const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method: "cash" }),
+      body: JSON.stringify({ method: "cash", tip_cents: tipCents }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -142,10 +148,22 @@ export default function CheckoutPage() {
               tableTotalCents={totals.table_total_cents}
               itemsTotalCents={totals.items_total_cents}
               taxCents={totals.tax_cents}
-              grandTotalCents={totals.grand_total_cents}
+              tipCents={tipCents}
+              grandTotalCents={totals.grand_total_cents + tipCents}
             />
           ) : null}
         </div>
+
+        {/* Tip selector */}
+        {totals && !method && (
+          <div className="rounded-xl border border-border/50 bg-card p-4">
+            <TipSelector
+              subtotalCents={totals.table_total_cents + totals.items_total_cents}
+              tipCents={tipCents}
+              onTipChange={setTipCents}
+            />
+          </div>
+        )}
 
         {/* Payment method picker */}
         {!method && (
@@ -210,7 +228,7 @@ export default function CheckoutPage() {
             {clientSecret && totals && !intentLoading && (
               <StripePaymentForm
                 clientSecret={clientSecret}
-                grandTotalCents={totals.grand_total_cents}
+                grandTotalCents={totals.grand_total_cents + tipCents}
                 returnUrl={returnUrl}
                 onError={setStripeError}
               />
@@ -239,7 +257,7 @@ export default function CheckoutPage() {
         <CashConfirmDialog
           open={cashOpen}
           onOpenChange={handleCashDialogClose}
-          grandTotalCents={totals.grand_total_cents}
+          grandTotalCents={totals.grand_total_cents + tipCents}
           onConfirm={handleCashConfirm}
         />
       )}

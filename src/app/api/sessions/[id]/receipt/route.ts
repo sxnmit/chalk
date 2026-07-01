@@ -85,6 +85,7 @@ export async function GET(
       tableTotalCents: payment.table_total_cents,
       itemsTotalCents: payment.items_total_cents,
       taxCents: payment.tax_cents,
+      tipCents: payment.tip_cents,
       grandTotalCents: payment.grand_total_cents,
       method: payment.method,
       cardLast4,

@@ -8,7 +8,8 @@ import { getVenueTaxRate, computeTaxCents } from "@/lib/tax"
 
 const ConfirmSchema = z.object({
   method: z.enum(["card", "cash"]),
-  payment_intent_id: z.string().optional(), // required for card
+  payment_intent_id: z.string().optional(),
+  tip_cents: z.number().int().min(0).max(999999).default(0),
 })
 
 export async function POST(
@@ -49,7 +50,8 @@ export async function POST(
     const taxRate = await getVenueTaxRate(supabase, venueId)
     const subtotalCents = tableTotalCents + itemsTotalCents
     const taxCents = computeTaxCents(subtotalCents, taxRate)
-    const grandTotalCents = subtotalCents + taxCents
+    const tipCents = parsed.data.tip_cents
+    const grandTotalCents = subtotalCents + taxCents + tipCents
     const stripeAmountCents = Math.max(grandTotalCents, 50)
 
     if (parsed.data.method === "card") {
@@ -58,7 +60,7 @@ export async function POST(
 
       const { data: existing } = await supabase
         .from("payments")
-        .select("id, stripe_payment_intent_id, tax_cents")
+        .select("id, stripe_payment_intent_id, tax_cents, tip_cents")
         .eq("session_id", sessionId)
         .eq("venue_id", venueId)
         .eq("stripe_payment_intent_id", piId)
@@ -88,7 +90,8 @@ export async function POST(
 
       const billedGrandTotalCents = pi.amount_received
       const billedTaxCents = existing.tax_cents ?? 0
-      const billedTableTotalCents = Math.max(0, billedGrandTotalCents - itemsTotalCents - billedTaxCents)
+      const billedTipCents = existing.tip_cents ?? 0
+      const billedTableTotalCents = Math.max(0, billedGrandTotalCents - itemsTotalCents - billedTaxCents - billedTipCents)
 
       const { data, error } = await supabase
         .from("payments")
@@ -97,6 +100,7 @@ export async function POST(
           table_total_cents: billedTableTotalCents,
           items_total_cents: itemsTotalCents,
           tax_cents: billedTaxCents,
+          tip_cents: billedTipCents,
           grand_total_cents: billedGrandTotalCents,
           stripe_payment_intent_id: piId,
           status: "succeeded",
@@ -132,6 +136,7 @@ export async function POST(
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
           tax_cents: taxCents,
+          tip_cents: tipCents,
           grand_total_cents: grandTotalCents,
           stripe_payment_intent_id: null,
           status: "succeeded",
@@ -152,7 +157,7 @@ export async function POST(
           table_total_cents: tableTotalCents,
           items_total_cents: itemsTotalCents,
           tax_cents: taxCents,
-          tip_cents: 0,
+          tip_cents: tipCents,
           grand_total_cents: grandTotalCents,
           status: "succeeded",
         })
