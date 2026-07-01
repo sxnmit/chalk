@@ -59,6 +59,7 @@ export async function GET(
       order_items: orderItems,
       started_at: session.started_at,
       actual_rate_charged: Number(session.actual_rate_charged),
+      snapshot_at: now.toISOString(),
     })
   } catch (e) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
