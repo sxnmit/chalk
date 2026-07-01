@@ -21,7 +21,12 @@ async function sendInviteEmail(email: string, token: string) {
   const admin = createAdminClient()
   const redirectTo = absoluteUrl(`/accept-invite?token=${encodeURIComponent(token)}`)
   const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo })
-  if (error) throw error
+  if (error) {
+    if ((error as { code?: string }).code === "email_exists") {
+      throw new HttpError(409, "This person already has an account and can't be invited this way.")
+    }
+    throw error
+  }
 }
 
 export async function POST(request: Request) {
