@@ -1,19 +1,16 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { CreditCard, Banknote, Nfc, ArrowLeft } from "lucide-react"
+import { Banknote, Nfc, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { CartTotals } from "@/components/ordering/cart-totals"
 import { TipSelector } from "@/components/ordering/tip-selector"
-import { StripePaymentForm } from "@/components/ordering/stripe-payment-form"
 import { CashConfirmDialog } from "@/components/ordering/cash-confirm-dialog"
 import { formatCAD } from "@/lib/format"
-
-type Method = "card" | "cash" | null
 
 interface Totals {
   table_total_cents: number
@@ -25,19 +22,14 @@ interface Totals {
 export default function CheckoutPage() {
   const params = useParams()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const sessionId = params.id as string
 
-  const [method, setMethod] = useState<Method>(null)
+  const [showCashFlow, setShowCashFlow] = useState(false)
   const [totals, setTotals] = useState<Totals | null>(null)
   const [totalsLoading, setTotalsLoading] = useState(true)
   const [tipCents, setTipCents] = useState(0)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [paymentId, setPaymentId] = useState<string | null>(null)
-  const [intentLoading, setIntentLoading] = useState(false)
   const [cashOpen, setCashOpen] = useState(false)
   const [cashPaymentId, setCashPaymentId] = useState<string | null>(null)
-  const [stripeError, setStripeError] = useState<string | null>(null)
 
   const loadTotals = useCallback(async () => {
     try {
@@ -51,51 +43,7 @@ export default function CheckoutPage() {
     }
   }, [sessionId])
 
-  // Handle Stripe redirect return
-  useEffect(() => {
-    const piId = searchParams.get("payment_intent")
-    if (piId) {
-      confirmCard(piId)
-    }
-  }, [])
-
   useEffect(() => { loadTotals() }, [loadTotals])
-
-  async function confirmCard(piId: string) {
-    try {
-      const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "card", payment_intent_id: piId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      router.push(`/session/${sessionId}/receipt?payment_id=${data.payment_id}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Payment confirmation failed")
-    }
-  }
-
-  async function selectCard() {
-    setMethod("card")
-    setIntentLoading(true)
-    try {
-      const res = await fetch(`/api/sessions/${sessionId}/checkout/intent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tip_cents: tipCents }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setClientSecret(data.client_secret)
-      setPaymentId(data.payment_id)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start checkout")
-      setMethod(null)
-    } finally {
-      setIntentLoading(false)
-    }
-  }
 
   async function handleCashConfirm(amountReceivedCents: number) {
     const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
@@ -118,10 +66,6 @@ export default function CheckoutPage() {
     }
     setCashOpen(open)
   }
-
-  const returnUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/session/${sessionId}/checkout`
-    : `/session/${sessionId}/checkout`
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,7 +99,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Tip selector */}
-        {totals && !method && (
+        {totals && !showCashFlow && (
           <div className="rounded-xl border border-border/50 bg-card p-4">
             <TipSelector
               subtotalCents={totals.table_total_cents + totals.items_total_cents}
@@ -166,24 +110,12 @@ export default function CheckoutPage() {
         )}
 
         {/* Payment method picker */}
-        {!method && (
+        {!showCashFlow && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground font-medium">Payment method</p>
             <div className="grid gap-3">
               <button
-                onClick={selectCard}
-                className="flex items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left hover:border-primary/50 transition-all min-h-[64px] active:scale-[0.99]"
-                aria-label="Pay by card"
-              >
-                <CreditCard className="h-6 w-6 text-primary" />
-                <div>
-                  <p className="font-medium text-foreground">Card</p>
-                  <p className="text-xs text-muted-foreground">Online payment via Stripe</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setMethod("cash")}
+                onClick={() => setShowCashFlow(true)}
                 className="flex items-center gap-4 rounded-xl border border-border/50 bg-card p-4 text-left hover:border-primary/50 transition-all min-h-[64px] active:scale-[0.99]"
                 aria-label="Pay by cash"
               >
@@ -210,40 +142,14 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* Card flow */}
-        {method === "card" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-primary" /> Card payment
-              </p>
-              <Button variant="ghost" size="sm" onClick={() => { setMethod(null); setClientSecret(null) }}>
-                Change
-              </Button>
-            </div>
-            {intentLoading && <Skeleton className="h-40 rounded-xl" />}
-            {stripeError && (
-              <p className="text-sm text-destructive rounded-lg border border-destructive/30 bg-destructive/10 p-3">{stripeError}</p>
-            )}
-            {clientSecret && totals && !intentLoading && (
-              <StripePaymentForm
-                clientSecret={clientSecret}
-                grandTotalCents={totals.grand_total_cents + tipCents}
-                returnUrl={returnUrl}
-                onError={setStripeError}
-              />
-            )}
-          </div>
-        )}
-
         {/* Cash CTA */}
-        {method === "cash" && (
+        {showCashFlow && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Banknote className="h-4 w-4 text-success" /> Cash payment
               </p>
-              <Button variant="ghost" size="sm" onClick={() => setMethod(null)}>Change</Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowCashFlow(false)}>Change</Button>
             </div>
             <Button className="w-full min-h-[52px] text-base" size="lg" onClick={() => setCashOpen(true)}>
               Mark Cash Received
