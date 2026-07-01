@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { createMockClient, makeSession } from "@/test/supabase-mock"
-import { getVenueTaxRate, computeTaxCents } from "./tax"
+import { getVenueTaxRate, computeTaxCents } from "@/lib/tax"
 
 describe("computeTaxCents", () => {
   it("computes tax as a rounded percentage of the subtotal", () => {
