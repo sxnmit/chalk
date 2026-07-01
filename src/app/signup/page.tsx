@@ -56,6 +56,26 @@ function SignupForm() {
       return
     }
 
+    // Supabase returns a user with empty identities when the email belongs
+    // to an already-confirmed account (privacy: no error, no email sent).
+    // Reuse the existing auth user by signing them in — middleware will
+    // route orphans (no venue) back to /onboarding automatically.
+    if (data.user?.identities?.length === 0) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (signInError) {
+        setError(
+          "An account with this email already exists. Please sign in instead."
+        )
+        setLoading(false)
+        return
+      }
+      router.push(nextPath)
+      return
+    }
+
     if (!data.session) {
       setConfirmationSent(true)
       setLoading(false)
