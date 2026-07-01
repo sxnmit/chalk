@@ -18,6 +18,7 @@ export function CashConfirmDialog({ open, onOpenChange, grandTotalCents, onConfi
   const [amountStr, setAmountStr] = useState((grandTotalCents / 100).toFixed(2))
   const [loading, setLoading] = useState(false)
   const [changeDue, setChangeDue] = useState<number | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
 
   const amountCents = Math.round(parseFloat(amountStr) * 100)
   const isValid = !isNaN(amountCents) && amountCents >= grandTotalCents
@@ -25,24 +26,22 @@ export function CashConfirmDialog({ open, onOpenChange, grandTotalCents, onConfi
   async function handleConfirm() {
     if (!isValid) return
     setLoading(true)
-    const change = amountCents - grandTotalCents
-    setChangeDue(change)
-    if (change > 0) {
-      await new Promise((r) => setTimeout(r, 1800))
-    }
     try {
       await onConfirm(amountCents)
+      setChangeDue(amountCents - grandTotalCents)
+      setConfirmed(true)
     } finally {
       setLoading(false)
     }
   }
 
   function handleOpenChange(v: boolean) {
-    if (!loading) {
+    if (loading) return
+    if (!v && !confirmed) {
       setChangeDue(null)
       setAmountStr((grandTotalCents / 100).toFixed(2))
-      onOpenChange(v)
     }
+    onOpenChange(v)
   }
 
   return (
@@ -56,9 +55,14 @@ export function CashConfirmDialog({ open, onOpenChange, grandTotalCents, onConfi
         </DialogHeader>
 
         {changeDue !== null ? (
-          <div className="text-center py-4">
-            <p className="text-sm text-muted-foreground mb-1">Change due</p>
-            <p className="text-4xl font-bold text-success">{formatCAD(changeDue)}</p>
+          <div className="space-y-4 py-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">Change due</p>
+              <p className="text-4xl font-bold text-success">{formatCAD(changeDue)}</p>
+            </div>
+            <Button className="w-full" size="lg" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
