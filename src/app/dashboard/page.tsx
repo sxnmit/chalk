@@ -36,7 +36,6 @@ function TableCardSkeleton() {
 export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
   const [rates, setRates] = useState<Rate[]>([])
-  const [todayRevenue, setTodayRevenue] = useState(0)
   const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
@@ -56,13 +55,12 @@ export default function DashboardPage() {
     }, 15000)
 
     loadDashboardData()
-      .then(({ tables, rates, userRole, venueName: name, todayRevenue: revenue, todayCompletedSessionsCount: completed }) => {
+      .then(({ tables, rates, userRole, venueName: name, todayCompletedSessionsCount: completed }) => {
         setTables(tables)
         setRates(rates)
         setIsAdmin(userRole === "owner" || userRole === "manager")
         setIsOwner(userRole === "owner")
         setVenueName(name)
-        setTodayRevenue(revenue)
         setTodayCompletedSessionsCount(completed)
       })
       .catch((err) => {
@@ -78,11 +76,9 @@ export default function DashboardPage() {
   const refresh = useCallback(async () => {
     const {
       tables: freshTables,
-      todayRevenue: revenue,
       todayCompletedSessionsCount: completed,
     } = await loadDashboardData()
     setTables(freshTables)
-    setTodayRevenue(revenue)
     setTodayCompletedSessionsCount(completed)
   }, [])
 
@@ -145,7 +141,6 @@ export default function DashboardPage() {
           />
 
           <StatBar
-            todayRevenue={todayRevenue}
             activeTables={activeTables}
             completedSessions={todayCompletedSessionsCount}
           />
