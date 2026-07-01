@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Building2, CheckCircle2 } from "lucide-react"
 import { OnboardingShell } from "@/components/billing/onboarding-shell"
 import { PlanCard } from "@/components/billing/plan-card"
@@ -11,8 +11,18 @@ import { Label } from "@/components/ui/label"
 import { createClient } from "@/utils/supabase/client"
 
 export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
+  )
+}
+
+function OnboardingContent() {
   const router = useRouter()
-  const [step, setStep] = useState(0)
+  const searchParams = useSearchParams()
+  const checkoutResult = searchParams.get("checkout")
+  const [step, setStep] = useState(checkoutResult === "success" ? 2 : 0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [venue, setVenue] = useState({
@@ -35,6 +45,11 @@ export default function OnboardingPage() {
         body: JSON.stringify(venue),
       })
       const data = await response.json()
+      if (response.status === 409) {
+        await createClient().auth.refreshSession()
+        setStep(1)
+        return
+      }
       if (!response.ok) throw new Error(data.error ?? "Unable to create venue")
 
       // The user's JWT was minted at signup, before this venue (and the
@@ -130,9 +145,22 @@ export default function OnboardingPage() {
         <div className="space-y-5">
           <div>
             <h1 className="font-heading text-2xl font-medium">Choose your plan</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Your trial starts now. Add a card later from billing.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Subscribe to get started with Chalk.</p>
           </div>
-          <PlanCard onContinue={() => setStep(2)} />
+          <PlanCard onContinue={async () => {
+            setLoading(true)
+            setError(null)
+            try {
+              const response = await fetch("/api/onboarding/checkout", { method: "POST" })
+              const data = await response.json()
+              if (!response.ok) throw new Error(data.error ?? "Unable to start checkout")
+              window.location.href = data.url
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Unable to start checkout")
+              setLoading(false)
+            }
+          }} />
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}
 

@@ -1,7 +1,6 @@
 export type VenueRole = "owner" | "manager" | "staff"
 
 export type SubscriptionStatus =
-  | "trialing"
   | "active"
   | "past_due"
   | "unpaid"
@@ -23,7 +22,6 @@ export interface SubscriptionSummary {
   stripeCustomerId: string | null
   stripeSubscriptionId: string | null
   stripePriceId: string | null
-  trialEndsAt: string | null
   currentPeriodEnd: string | null
   cancelAtPeriodEnd: boolean
 }

@@ -17,7 +17,7 @@ export function PlanCard({ onContinue }: { onContinue?: () => void }) {
         </div>
       </div>
       <ul className="mt-5 space-y-2 text-sm">
-        {["14-day free trial", "No credit card required to start", "Team roles and billing controls"].map((item) => (
+        {["Unlimited tables", "Team roles and billing controls", "Cancel anytime"].map((item) => (
           <li key={item} className="flex items-center gap-2">
             <Check className="h-4 w-4 text-primary" />
             {item}
@@ -26,7 +26,7 @@ export function PlanCard({ onContinue }: { onContinue?: () => void }) {
       </ul>
       {onContinue && (
         <Button className="mt-5 w-full" onClick={onContinue}>
-          Start free trial
+          Subscribe
         </Button>
       )}
     </div>

@@ -24,7 +24,7 @@ describe("BLOCKED_SUBSCRIPTION_STATUSES", () => {
   })
 
   it("does not block healthy states", () => {
-    for (const status of ["trialing", "active", "past_due"]) {
+    for (const status of ["active", "past_due"]) {
       expect(BLOCKED_SUBSCRIPTION_STATUSES.has(status)).toBe(false)
     }
   })
