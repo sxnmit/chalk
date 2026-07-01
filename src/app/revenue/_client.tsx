@@ -247,11 +247,11 @@ export function RevenuePageClient() {
                     <BreakdownRow label="Table time" value={formatCurrency(data.tableRevenue)} />
                     <BreakdownRow label="Food & drink" value={formatCurrency(data.itemsRevenue)} />
                     <BreakdownRow label="Tax" value={formatCurrency(data.taxCollected)} />
-                    <BreakdownRow label="Tips" value={formatCurrency(data.tipsCollected)} />
                     <div className="flex items-center justify-between bg-secondary/20 px-5 py-4">
-                      <dt className="text-sm font-semibold text-foreground">Total collected</dt>
+                      <dt className="text-sm font-semibold text-foreground">Revenue</dt>
                       <dd className="tabular-nums text-lg font-bold text-success">{formatCurrency(data.totalRevenue)}</dd>
                     </div>
+                    <BreakdownRow label="Tips collected" value={formatCurrency(data.tipsCollected)} />
                   </dl>
                 </div>
 
