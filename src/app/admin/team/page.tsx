@@ -34,6 +34,8 @@ export default function AdminTeamPage() {
   const [error, setError] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<PendingInvite | null>(null)
+  const [revoking, setRevoking] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
@@ -89,6 +91,24 @@ export default function AdminTeamPage() {
     toast.success(`Removed ${removeTarget.name ?? "member"}`)
     setRemoveTarget(null)
     setRemoving(false)
+    load()
+  }
+
+  async function confirmRevoke() {
+    if (!revokeTarget) return
+    setRevoking(true)
+    setError(null)
+    const response = await fetch(`/api/team/invite/${revokeTarget.id}`, { method: "DELETE" })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      setError(data.error ?? "Unable to revoke invite")
+      toast.error(data.error ?? "Unable to revoke invite")
+      setRevoking(false)
+      return
+    }
+    toast.success(`Revoked invite for ${revokeTarget.email}`)
+    setRevokeTarget(null)
+    setRevoking(false)
     load()
   }
 
@@ -164,7 +184,19 @@ export default function AdminTeamPage() {
                         )}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="capitalize">{invite.role}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="capitalize">{invite.role}</Badge>
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setRevokeTarget(invite)}
+                        >
+                          Revoke
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -197,6 +229,35 @@ export default function AdminTeamPage() {
             </Button>
             <Button variant="destructive" onClick={confirmRemove} disabled={removing}>
               {removing ? "Removing..." : "Remove member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !revoking) setRevokeTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke invite?</DialogTitle>
+            <DialogDescription>
+              The invite for {revokeTarget?.email} will be permanently deleted.
+              They will no longer be able to join using this link.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setRevokeTarget(null)}
+              disabled={revoking}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmRevoke} disabled={revoking}>
+              {revoking ? "Revoking..." : "Revoke invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
