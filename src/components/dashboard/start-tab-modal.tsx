@@ -68,6 +68,9 @@ export function StartTabModal({ onConfirm, onCancel }: StartTabModalProps) {
               autoFocus
               className="border-border/50 focus:border-primary"
             />
+            {playerName.length >= 30 && (
+              <p className="text-xs text-destructive">30-character limit reached</p>
+            )}
           </div>
 
           {error && (
