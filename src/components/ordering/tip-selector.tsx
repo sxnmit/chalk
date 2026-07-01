@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ChevronUp, ChevronDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatCAD } from "@/lib/format"
 
@@ -121,7 +122,7 @@ export function TipSelector({ subtotalCents, tipCents, onTipChange }: TipSelecto
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
               <Input
-                className="pl-7 text-lg font-semibold"
+                className="pl-7 pr-12 text-lg font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 value={customStr}
                 onChange={(e) => handleCustomAmountChange(e.target.value)}
                 type="number"
@@ -130,11 +131,29 @@ export function TipSelector({ subtotalCents, tipCents, onTipChange }: TipSelecto
                 placeholder="0.00"
                 autoFocus
               />
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col">
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => handleCustomAmountChange(String(((parseFloat(customStr) || 0) + 1).toFixed(2)))}
+                  className="flex h-4 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-primary/10"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => handleCustomAmountChange(String(Math.max(0, (parseFloat(customStr) || 0) - 1).toFixed(2)))}
+                  className="flex h-4 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-primary/10"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="relative">
               <Input
-                className="pr-7 text-lg font-semibold"
+                className="pr-16 text-lg font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 value={customStr}
                 onChange={(e) => handleCustomPercentChange(e.target.value)}
                 type="number"
@@ -143,7 +162,27 @@ export function TipSelector({ subtotalCents, tipCents, onTipChange }: TipSelecto
                 placeholder="0"
                 autoFocus
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                <span className="text-sm text-muted-foreground mr-0.5">%</span>
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => handleCustomPercentChange(String(Math.min(100, (parseInt(customStr) || 0) + 1)))}
+                    className="flex h-4 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-primary/10"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => handleCustomPercentChange(String(Math.max(0, (parseInt(customStr) || 0) - 1)))}
+                    className="flex h-4 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-primary/10"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
