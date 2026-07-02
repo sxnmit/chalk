@@ -2,7 +2,7 @@
 // session at 1am counts toward the previous calendar day. All bounds are
 // returned as UTC ISO strings for use in `started_at` range filters.
 
-const CUTOFF_HOUR = 3
+const DEFAULT_CUTOFF_HOUR = 3
 const DAY_MS = 24 * 60 * 60 * 1000
 
 function partsAt(d: Date, tz: string): Record<string, number> {
@@ -39,23 +39,22 @@ function addDays(dateStr: string, n: number): string {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
 }
 
-/** UTC instant of the 3am business-day cutoff on the given venue-local calendar date. */
-export function businessDayStartUTC(dateStr: string, timezone: string): Date {
-  const boundaryBase = new Date(`${dateStr}T0${CUTOFF_HOUR}:00:00Z`)
+export function businessDayStartUTC(dateStr: string, timezone: string, cutoffHour = DEFAULT_CUTOFF_HOUR): Date {
+  const hourStr = String(cutoffHour).padStart(2, "0")
+  const boundaryBase = new Date(`${dateStr}T${hourStr}:00:00Z`)
   const offsetMs = asUTC(partsAt(boundaryBase, "UTC")) - asUTC(partsAt(boundaryBase, timezone))
   return new Date(boundaryBase.getTime() + offsetMs)
 }
 
-/** Venue-local business-day date (`YYYY-MM-DD`) for a UTC instant — an instant before the 3am cutoff counts toward the previous calendar day. */
-export function businessDayOf(d: Date, timezone: string): string {
-  return hourInTz(d, timezone) < CUTOFF_HOUR
+/** Venue-local business-day date (`YYYY-MM-DD`) for a UTC instant — an instant before the cutoff counts toward the previous calendar day. */
+export function businessDayOf(d: Date, timezone: string, cutoffHour = DEFAULT_CUTOFF_HOUR): string {
+  return hourInTz(d, timezone) < cutoffHour
     ? dateStringInTz(new Date(d.getTime() - DAY_MS), timezone)
     : dateStringInTz(d, timezone)
 }
 
-/** UTC bounds [gte, lt) of the current business day (3am→3am venue-local). */
-export function todayBoundsUTC(timezone: string): { gte: string; lt: string } {
-  const start = businessDayStartUTC(businessDayOf(new Date(), timezone), timezone)
+export function todayBoundsUTC(timezone: string, cutoffHour = DEFAULT_CUTOFF_HOUR): { gte: string; lt: string } {
+  const start = businessDayStartUTC(businessDayOf(new Date(), timezone, cutoffHour), timezone, cutoffHour)
   return { gte: start.toISOString(), lt: new Date(start.getTime() + DAY_MS).toISOString() }
 }
 
@@ -83,9 +82,10 @@ export function businessDayRangeUTC(
   from: string,
   to: string,
   timezone: string,
+  cutoffHour = DEFAULT_CUTOFF_HOUR,
 ): { gte: string; lt: string } {
   return {
-    gte: businessDayStartUTC(from, timezone).toISOString(),
-    lt: businessDayStartUTC(addDays(to, 1), timezone).toISOString(),
+    gte: businessDayStartUTC(from, timezone, cutoffHour).toISOString(),
+    lt: businessDayStartUTC(addDays(to, 1), timezone, cutoffHour).toISOString(),
   }
 }

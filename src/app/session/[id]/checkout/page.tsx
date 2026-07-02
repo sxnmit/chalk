@@ -17,6 +17,7 @@ interface Totals {
   items_total_cents: number
   tax_cents: number
   grand_total_cents: number
+  snapshot_at: string
 }
 
 export default function CheckoutPage() {
@@ -49,7 +50,7 @@ export default function CheckoutPage() {
     const res = await fetch(`/api/sessions/${sessionId}/checkout/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method: "cash", tip_cents: tipCents }),
+      body: JSON.stringify({ method: "cash", tip_cents: tipCents, snapshot_at: totals?.snapshot_at }),
     })
     const data = await res.json()
     if (!res.ok) {

@@ -4,10 +4,12 @@ import { createClient } from "@/utils/supabase/server"
 import { getProfile } from "@/lib/auth"
 import { sessionTableTotalCents } from "@/lib/billing-table"
 import { getVenueTaxRate, computeTaxCents } from "@/lib/tax"
+import { resolveSnapshotTime } from "@/lib/snapshot-time"
 
 const ConfirmSchema = z.object({
   method: z.enum(["cash"]),
   tip_cents: z.number().int().min(0).max(999999).default(0),
+  snapshot_at: z.string().optional(),
 })
 
 export async function POST(
@@ -32,7 +34,7 @@ export async function POST(
 
     if (sessionErr || !session) return NextResponse.json({ error: "Session not found" }, { status: 404 })
 
-    const now = new Date()
+    const now = resolveSnapshotTime(parsed.data.snapshot_at, session.started_at)
     const tableTotalCents = await sessionTableTotalCents(
       supabase, venueId, session.started_at, Number(session.actual_rate_charged), now.getTime(),
     )

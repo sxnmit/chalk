@@ -16,6 +16,7 @@ export interface RevenueData {
   byMethod: { method: string; count: number; revenue: number }[]
   peakHours: { hour: number; count: number }[]
   tierBreakdown: { label: string; sessionCount: number; revenue: number }[]
+  currency: string
 }
 
 interface SessionEmbed {
@@ -37,12 +38,13 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
 
   const { data: venue } = await supabase
     .from("venues")
-    .select("timezone")
+    .select("timezone, business_day_cutoff_hour, currency")
     .eq("id", venueId)
     .single()
 
   const timezone = venue?.timezone ?? "UTC"
-  const { gte, lt } = businessDayRangeUTC(from, to, timezone)
+  const cutoffHour = venue?.business_day_cutoff_hour ?? 3
+  const { gte, lt } = businessDayRangeUTC(from, to, timezone, cutoffHour)
 
   // Only succeeded payments count as revenue. Filter by the session's start
   // time (inner-joined) so the range matches what staff see per business day.
@@ -124,6 +126,7 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
     tierBreakdown: [...tierMap.entries()]
       .map(([label, d]) => ({ label, sessionCount: d.sessionCount, revenue: toDollars(d.revenue) }))
       .sort((a, b) => b.revenue - a.revenue),
+    currency: venue?.currency ?? "CAD",
   }
 }
 

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { RateFormSheet } from "./rate-form-sheet"
+import { formatCurrency } from "@/lib/pool-types"
 
 export interface AdminRate {
   id: string
@@ -21,10 +22,6 @@ export interface AdminRate {
   is_default: boolean
   active: boolean
   sort_order: number
-}
-
-function formatCurrency(n: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export function RatesAdmin({ openSidebar }: { openSidebar?: () => void }) {

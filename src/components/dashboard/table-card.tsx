@@ -10,6 +10,7 @@ import {
   PoolTable,
   TableSession,
   Rate,
+  PeakSchedule,
   calculateAmountOwed,
   formatDuration,
   formatTime,
@@ -39,10 +40,12 @@ interface OccupiedContentProps {
   session: TableSession
   rate: Rate | undefined
   peakRate: number
+  peakSchedule: PeakSchedule
+  currency: string
 }
 
 // Isolated component — only this re-renders every second, not the whole card.
-function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
+function OccupiedContent({ session, rate, peakRate, peakSchedule, currency }: OccupiedContentProps) {
   const [, setTick] = useState(0)
 
   useEffect(() => {
@@ -50,7 +53,7 @@ function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
     return () => clearInterval(interval)
   }, [])
 
-  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate)
+  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate, undefined, peakSchedule)
 
   return (
     <div className="flex flex-1 flex-col justify-between py-2">
@@ -74,7 +77,7 @@ function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
       <div className="flex flex-1 items-center justify-center rounded-xl bg-success/10 my-4">
         <div className="text-center">
           <div className="text-xs uppercase tracking-wider text-success/70 mb-1">Amount Owed</div>
-          <div className="text-5xl font-bold text-success">{formatCurrency(amountOwed)}</div>
+          <div className="text-5xl font-bold text-success">{formatCurrency(amountOwed, currency)}</div>
         </div>
       </div>
 
@@ -92,11 +95,13 @@ function OccupiedContent({ session, rate, peakRate }: OccupiedContentProps) {
 export interface TableCardProps {
   table: PoolTable
   rates: Rate[]
+  peakSchedule: PeakSchedule
+  currency: string
   onStartSession: (tableId: string) => void
   onEndSession: (tableId: string) => void
 }
 
-export function TableCard({ table, rates, onStartSession, onEndSession }: TableCardProps) {
+export function TableCard({ table, rates, peakSchedule, currency, onStartSession, onEndSession }: TableCardProps) {
   const isOccupied = !!table.session
   const rate = table.session ? rates.find((r) => r.id === table.session!.rateId) : undefined
   const peakRate = rates.reduce((max, r) => Math.max(max, r.pricePerHour), 0)
@@ -133,7 +138,7 @@ export function TableCard({ table, rates, onStartSession, onEndSession }: TableC
       {/* Card body */}
       <div className="flex flex-1 flex-col px-4 pb-4">
         {isOccupied && table.session ? (
-          <OccupiedContent session={table.session} rate={rate} peakRate={peakRate} />
+          <OccupiedContent session={table.session} rate={rate} peakRate={peakRate} peakSchedule={peakSchedule} currency={currency} />
         ) : (
           <FreeContent />
         )}
