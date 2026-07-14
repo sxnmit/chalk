@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server"
 import { apiError, HttpError, requireRole } from "@/lib/billing/server"
-import { createAdminClient } from "@/utils/supabase/admin"
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ inviteId: string }> }
 ) {
   try {
-    const { profile } = await requireRole(["owner"])
+    const { supabase, profile } = await requireRole(["owner"])
     const { inviteId } = await params
-    const admin = createAdminClient()
 
-    const { data: invite, error: lookupError } = await admin
+    const { data: invite, error: lookupError } = await supabase
       .from("venue_invites")
       .select("id, email, role, created_at, expires_at")
       .eq("id", inviteId)
@@ -21,10 +19,10 @@ export async function DELETE(
     if (!invite) throw new HttpError(404, "Invite not found")
 
     // Auditing happens in the database: the audit_venue_invites trigger
-    // records this delete (with the full before row) atomically. Note the
-    // delete runs through the admin client, so the trigger's auth.uid() is
-    // null and the row is attributed to "System" rather than this owner.
-    const { error } = await admin
+    // records this delete (with the full before row) atomically, attributed
+    // to this owner since the delete runs through their own JWT-scoped
+    // client (the "owners manage invites" RLS policy already permits it).
+    const { error } = await supabase
       .from("venue_invites")
       .delete()
       .eq("id", invite.id)
