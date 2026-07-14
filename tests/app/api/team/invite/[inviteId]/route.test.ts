@@ -47,7 +47,6 @@ function adminWithInvite(invite: typeof INVITE | null = INVITE) {
           if (callCount === 1) return { data: invite, error: null }
           return { data: null, error: null }
         },
-        audit_log: { data: null, error: null },
       },
     }) as never
   )
@@ -74,26 +73,14 @@ describe("DELETE /api/team/invite/[inviteId]", () => {
     expect(inviteBuilders[1].eq).toHaveBeenCalledWith("venue_id", "v1")
   })
 
-  it("writes an audit log entry on successful revoke", async () => {
+  it("does not write audit_log directly — the audit_venue_invites DB trigger owns that", async () => {
     ownerSession()
     adminWithInvite()
 
     await DELETE({} as never, params("inv1"))
 
     const adminClient = mockedCreateAdminClient.mock.results[0].value
-    expect(adminClient.from).toHaveBeenCalledWith("audit_log")
-    const auditBuilder = adminClient.buildersFor("audit_log")[0]
-    expect(auditBuilder.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        venue_id: "v1",
-        actor_id: "u1",
-        actor_role: "owner",
-        entity_type: "venue_invite",
-        entity_id: "inv1",
-        operation: "revoke",
-        before: INVITE,
-      })
-    )
+    expect(adminClient.from).not.toHaveBeenCalledWith("audit_log")
   })
 
   it("returns 404 when the invite does not exist", async () => {

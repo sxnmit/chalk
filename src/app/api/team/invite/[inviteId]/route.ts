@@ -20,22 +20,16 @@ export async function DELETE(
     if (lookupError) throw lookupError
     if (!invite) throw new HttpError(404, "Invite not found")
 
+    // Auditing happens in the database: the audit_venue_invites trigger
+    // records this delete (with the full before row) atomically. Note the
+    // delete runs through the admin client, so the trigger's auth.uid() is
+    // null and the row is attributed to "System" rather than this owner.
     const { error } = await admin
       .from("venue_invites")
       .delete()
       .eq("id", invite.id)
       .eq("venue_id", profile.venueId)
     if (error) throw error
-
-    await admin.from("audit_log").insert({
-      venue_id: profile.venueId,
-      actor_id: profile.userId,
-      actor_role: profile.role,
-      entity_type: "venue_invite",
-      entity_id: invite.id,
-      operation: "revoke",
-      before: invite,
-    })
 
     return NextResponse.json({ ok: true })
   } catch (error) {
