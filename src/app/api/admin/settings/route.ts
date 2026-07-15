@@ -82,7 +82,24 @@ export async function PATCH(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
 
-    return NextResponse.json({ ok: true })
+    const { data: updated, error: fetchError } = await supabase
+      .from("venues")
+      .select(VENUE_COLUMNS)
+      .eq("id", venueId)
+      .single()
+
+    if (fetchError) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({
+      name: updated.name,
+      timezone: updated.timezone,
+      tax_rate: Number(updated.tax_rate),
+      currency: updated.currency,
+      peak_days: updated.peak_days,
+      peak_start_hour: updated.peak_start_hour,
+      peak_end_hour: updated.peak_end_hour,
+      business_day_cutoff_hour: updated.business_day_cutoff_hour,
+      receipt_footer: updated.receipt_footer,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error"
     const status = message.includes("Not authenticated") ? 401 : 500
