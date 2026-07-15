@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { apiError, requireProfile } from "@/lib/billing/server"
 import { createAdminClient } from "@/utils/supabase/admin"
+
+const AcceptInviteSchema = z.object({
+  token: z.string().trim().min(1, "Invite token is required"),
+})
 
 export async function POST(request: Request) {
   try {
     const { profile } = await requireProfile({ allowMissingVenue: true })
     const body = await request.json()
-    const token = String(body.token ?? "")
-    if (!token) return NextResponse.json({ error: "Invite token is required" }, { status: 400 })
+    const parsed = AcceptInviteSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+    const { token } = parsed.data
 
     const admin = createAdminClient()
     const { data: invite, error: inviteError } = await admin
