@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { getProfile } from "@/lib/auth"
 import { businessDayRangeUTC, businessDayOf, formatLocalDateTime } from "@/lib/business-day"
 import { formatAuditDiff } from "@/lib/audit"
@@ -282,22 +283,29 @@ interface AuditLogRow {
 const AUDIT_CSV_HEADER = ["Timestamp", "Actor", "Role", "Entity", "Entity ID", "Operation", "Summary of Change"]
 
 /**
- * Maps actor_id -> a display label. Only the legacy `users` table has a
- * `name` column (venue_members-only accounts have no row there, same gap
- * the team member list already has — see team-member-row.tsx's `?? user_id`
- * fallback), so this falls back to the raw id rather than adding a new
- * service-role lookup for it.
+ * Maps actor_id -> a display label: the legacy `users.name` when present
+ * (real names, e.g. the seeded Shy Lounge accounts), otherwise the signup
+ * name captured in auth user_metadata (venue_members-only accounts have no
+ * row in `users` — see signup/page.tsx's `options.data.name`), otherwise
+ * the account email, otherwise the raw id.
  */
 async function resolveActorLabels(supabase: Supabase, actorIds: string[]): Promise<Map<string, string>> {
   const labelById = new Map<string, string>()
   if (actorIds.length === 0) return labelById
 
-  const { data: legacyUsers } = await supabase.from("users").select("id, name").in("id", actorIds)
+  const admin = createAdminClient()
+  const [{ data: legacyUsers }, authResults] = await Promise.all([
+    supabase.from("users").select("id, name").in("id", actorIds),
+    Promise.all(actorIds.map((id) => admin.auth.admin.getUserById(id))),
+  ])
+
   const legacyNameById = new Map((legacyUsers ?? []).map((u) => [u.id, u.name]))
 
-  for (const id of actorIds) {
-    labelById.set(id, legacyNameById.get(id) ?? id)
-  }
+  actorIds.forEach((id, i) => {
+    const authUser = authResults[i].data.user
+    const authLabel = (authUser?.user_metadata?.name as string | undefined) || authUser?.email
+    labelById.set(id, legacyNameById.get(id) ?? authLabel ?? id)
+  })
 
   return labelById
 }

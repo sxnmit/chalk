@@ -2,15 +2,33 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { createMockClient, makeSession } from "@/test/supabase-mock"
 
 vi.mock("@/utils/supabase/server", () => ({ createClient: vi.fn() }))
+vi.mock("@/utils/supabase/admin", () => ({ createAdminClient: vi.fn() }))
 
 import { exportSessionsCsvAction, exportAuditLogCsvAction } from "@/app/revenue/actions"
 import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 
 const mockedCreateClient = vi.mocked(createClient)
+const mockedCreateAdminClient = vi.mocked(createAdminClient)
 
 function withClient(client: ReturnType<typeof createMockClient>) {
   mockedCreateClient.mockResolvedValue(client as never)
   return client
+}
+
+type AuthUser = { email?: string; user_metadata?: { name?: string } }
+
+/** Configure createAdminClient().auth.admin.getUserById(id) for a fixed set of ids. */
+function withAuthUsers(usersById: Record<string, AuthUser | null>) {
+  mockedCreateAdminClient.mockReturnValue({
+    auth: {
+      admin: {
+        getUserById: vi.fn((id: string) =>
+          Promise.resolve({ data: { user: usersById[id] ? { id, ...usersById[id] } : null }, error: null })
+        ),
+      },
+    },
+  } as never)
 }
 
 const venueRow = { data: { name: "Shy Lounge", timezone: "UTC" }, error: null }
@@ -157,7 +175,12 @@ describe("exportAuditLogCsvAction", () => {
     )
   })
 
-  it("resolves actor names from the legacy users table and falls back to the raw id", async () => {
+  it("resolves actor names through legacy users, then auth metadata name, then email, then the raw id", async () => {
+    withAuthUsers({
+      "u-modern": { user_metadata: { name: "Priya" } },
+      "u-email-only": { email: "sam@example.com" },
+      // u-deleted intentionally absent -> getUserById resolves { user: null }.
+    })
     const client = withClient(
       createMockClient({
         session: makeSession("u1", { venue_id: "v1", role: "owner" }),
@@ -167,7 +190,7 @@ describe("exportAuditLogCsvAction", () => {
           audit_log: {
             data: [
               {
-                created_at: "2026-06-15T18:00:00Z",
+                created_at: "2026-06-15T17:00:00Z",
                 actor_id: "u-legacy",
                 actor_role: "owner",
                 entity_type: "rates",
@@ -177,17 +200,37 @@ describe("exportAuditLogCsvAction", () => {
                 after: { hourly_rate: 20, label: "League" },
               },
               {
-                created_at: "2026-06-15T19:00:00Z",
+                created_at: "2026-06-15T18:00:00Z",
                 actor_id: "u-modern",
                 actor_role: "staff",
                 entity_type: "sessions",
                 entity_id: "s1",
                 operation: "insert",
                 before: null,
-                after: { started_at: "2026-06-15T19:00:00Z" },
+                after: { started_at: "2026-06-15T18:00:00Z" },
+              },
+              {
+                created_at: "2026-06-15T19:00:00Z",
+                actor_id: "u-email-only",
+                actor_role: "manager",
+                entity_type: "tables",
+                entity_id: "t1",
+                operation: "update",
+                before: { status: "free" },
+                after: { status: "occupied" },
               },
               {
                 created_at: "2026-06-15T20:00:00Z",
+                actor_id: "u-deleted",
+                actor_role: "staff",
+                entity_type: "sessions",
+                entity_id: "s2",
+                operation: "delete",
+                before: { started_at: "2026-06-15T20:00:00Z" },
+                after: null,
+              },
+              {
+                created_at: "2026-06-15T21:00:00Z",
                 actor_id: null,
                 actor_role: null,
                 entity_type: "payments",
@@ -208,16 +251,21 @@ describe("exportAuditLogCsvAction", () => {
 
     const lines = result.csv.split("\r\n")
     expect(lines[0]).toBe("Timestamp,Actor,Role,Entity,Entity ID,Operation,Summary of Change")
+    // Legacy `users.name` takes precedence.
     expect(lines[1]).toBe(
-      "2026-06-15 18:00:00,Vish,owner,rates,r1,update,hourly_rate: 15 → 20"
+      "2026-06-15 17:00:00,Vish,owner,rates,r1,update,hourly_rate: 15 → 20"
     )
-    // No matching `users` row for u-modern -> falls back to the raw actor id.
-    expect(lines[2]).toBe("2026-06-15 19:00:00,u-modern,staff,sessions,s1,insert,Created")
+    // No `users` row -> auth user_metadata.name.
+    expect(lines[2]).toBe("2026-06-15 18:00:00,Priya,staff,sessions,s1,insert,Created")
+    // No metadata name -> auth email.
+    expect(lines[3]).toBe("2026-06-15 19:00:00,sam@example.com,manager,tables,t1,update,status: free → occupied")
+    // No users row and no matching auth user -> raw actor id.
+    expect(lines[4]).toBe("2026-06-15 20:00:00,u-deleted,staff,sessions,s2,delete,Deleted")
     // Null actor_id (service-role/webhook mutation) -> "System".
-    expect(lines[3]).toBe(
-      "2026-06-15 20:00:00,System,,payments,p1,update,status: pending → succeeded"
+    expect(lines[5]).toBe(
+      "2026-06-15 21:00:00,System,,payments,p1,update,status: pending → succeeded"
     )
-    expect(lines).toHaveLength(4)
+    expect(lines).toHaveLength(6)
 
     const auditLogBuilder = client.buildersFor("audit_log")[0]
     expect(auditLogBuilder.eq).toHaveBeenCalledWith("venue_id", "v1")
