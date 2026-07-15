@@ -19,8 +19,12 @@ async function sendInviteEmail(email: string, token: string) {
   }
 
   const admin = createAdminClient()
-  const next = `/accept-invite?token=${encodeURIComponent(token)}`
-  const redirectTo = absoluteUrl(`/auth/callback?next=${encodeURIComponent(next)}`)
+  // inviteUserByEmail doesn't support PKCE (the inviter and invitee are
+  // different browsers), so this link always resolves via the implicit flow —
+  // the session lands in a URL fragment, which only client-side code can see.
+  // Point it straight at /accept-invite, which detects that fragment itself;
+  // a server route like /auth/callback would never receive it.
+  const redirectTo = absoluteUrl(`/accept-invite?token=${encodeURIComponent(token)}`)
   const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo })
   if (error) {
     if ((error as { code?: string }).code === "email_exists") {
