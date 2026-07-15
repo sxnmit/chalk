@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/utils/supabase/client"
 
 function AcceptInviteContent() {
   const router = useRouter()
@@ -17,11 +18,23 @@ function AcceptInviteContent() {
       return
     }
 
-    fetch("/api/auth/accept-invite", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token }),
-    })
+    // The invite link's session lands in the URL fragment (implicit flow —
+    // inviteUserByEmail doesn't support PKCE). Instantiating the browser
+    // client here triggers its automatic hash detection, which parses the
+    // fragment, persists the session, and syncs it into cookies. Awaiting
+    // getSession() ensures that finishes before we call an endpoint that
+    // depends on the session cookie being present.
+    const supabase = createClient()
+
+    supabase.auth
+      .getSession()
+      .then(() =>
+        fetch("/api/auth/accept-invite", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token }),
+        })
+      )
       .then(async (response) => {
         const data = await response.json()
         if (response.status === 401) {

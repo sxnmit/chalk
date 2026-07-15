@@ -146,11 +146,7 @@ describe("POST /api/team/invite", () => {
     )
     expect(client.auth.admin.inviteUserByEmail).toHaveBeenCalledWith(
       "new@example.com",
-      expect.objectContaining({
-        redirectTo: expect.stringContaining(
-          `/auth/callback?next=${encodeURIComponent("/accept-invite?token=")}`
-        ),
-      })
+      expect.objectContaining({ redirectTo: expect.stringContaining("/accept-invite?token=") })
     )
   })
 
