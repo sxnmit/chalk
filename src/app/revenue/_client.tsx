@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote, Download } from "lucide-react"
+import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote, Download, ScrollText } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Calendar } from "@/components/ui/calendar"
 import { PopoverRoot, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { loadRevenueData, exportSessionsCsvAction, RevenueData } from "./actions"
+import { loadRevenueData, exportSessionsCsvAction, exportAuditLogCsvAction, RevenueData } from "./actions"
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -141,6 +141,9 @@ export function RevenuePageClient() {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
+  const [exportingAudit, setExportingAudit] = useState(false)
+  const [exportAuditError, setExportAuditError] = useState<string | null>(null)
+
   const fetchData = useCallback(async (from: Date, to: Date) => {
     setLoading(true)
     setError(null)
@@ -189,6 +192,28 @@ export function RevenuePageClient() {
       setExportError(e instanceof Error ? e.message : "Failed to export CSV.")
     } finally {
       setExporting(false)
+    }
+  }, [range])
+
+  const handleExportAudit = useCallback(async () => {
+    if (!range.from || !range.to) return
+    setExportingAudit(true)
+    setExportAuditError(null)
+    try {
+      const { filename, csv } = await exportAuditLogCsvAction(fmtISODate(range.from), fmtISODate(range.to))
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: unknown) {
+      setExportAuditError(e instanceof Error ? e.message : "Failed to export audit log.")
+    } finally {
+      setExportingAudit(false)
     }
   }, [range])
 
@@ -258,9 +283,18 @@ export function RevenuePageClient() {
                 <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="hidden sm:inline">{exporting ? "Exporting…" : "Export CSV"}</span>
               </button>
+              <button
+                onClick={handleExportAudit}
+                disabled={exportingAudit || !range.from || !range.to}
+                className="flex items-center gap-2 rounded-xl border border-border/50 bg-secondary/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ScrollText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="hidden sm:inline">{exportingAudit ? "Exporting…" : "Export Audit Log"}</span>
+              </button>
             </div>
           </div>
           {exportError && <p className="mb-4 text-sm text-destructive">{exportError}</p>}
+          {exportAuditError && <p className="mb-4 text-sm text-destructive">{exportAuditError}</p>}
           {error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : (

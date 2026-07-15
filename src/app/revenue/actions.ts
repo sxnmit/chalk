@@ -2,8 +2,12 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { getProfile } from "@/lib/auth"
 import { businessDayRangeUTC, businessDayOf, formatLocalDateTime } from "@/lib/business-day"
+import { formatAuditDiff } from "@/lib/audit"
+
+type Supabase = Awaited<ReturnType<typeof createClient>>
 
 export interface RevenueData {
   totalRevenue: number        // grand total collected (table + items + tax + tip)
@@ -259,6 +263,124 @@ export async function exportSessionsCsvAction(
 
   return {
     filename: `chalk-sessions-${venueSlug}-${from}-to-${to}.csv`,
+    csv: lines.join("\r\n"),
+  }
+}
+
+// ── Audit log CSV export ─────────────────────────────────────────────────────────
+
+interface AuditLogRow {
+  created_at: string
+  actor_id: string | null
+  actor_role: string | null
+  entity_type: string
+  entity_id: string
+  operation: string
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+}
+
+const AUDIT_CSV_HEADER = ["Timestamp", "Actor", "Role", "Entity", "Entity ID", "Operation", "Summary of Change"]
+
+/**
+ * Maps actor_id -> a display label: the legacy `users.name` when present
+ * (real names, e.g. the seeded Shy Lounge accounts), otherwise the signup
+ * name captured in auth user_metadata (venue_members-only accounts have no
+ * row in `users` — see signup/page.tsx's `options.data.name`), otherwise
+ * the account email, otherwise the raw id.
+ */
+async function resolveActorLabels(supabase: Supabase, actorIds: string[]): Promise<Map<string, string>> {
+  const labelById = new Map<string, string>()
+  if (actorIds.length === 0) return labelById
+
+  const admin = createAdminClient()
+  const [{ data: legacyUsers }, authResults] = await Promise.all([
+    supabase.from("users").select("id, name").in("id", actorIds),
+    Promise.all(actorIds.map((id) => admin.auth.admin.getUserById(id))),
+  ])
+
+  const legacyNameById = new Map((legacyUsers ?? []).map((u) => [u.id, u.name]))
+
+  actorIds.forEach((id, i) => {
+    const authUser = authResults[i].data.user
+    const authLabel = (authUser?.user_metadata?.name as string | undefined) || authUser?.email
+    labelById.set(id, legacyNameById.get(id) ?? authLabel ?? id)
+  })
+
+  return labelById
+}
+
+/**
+ * CSV of the audit log for a venue over a date range — owner only (audit
+ * history is more sensitive than aggregate revenue, which owners/managers
+ * both see). Same range validation and business-day semantics as
+ * exportSessionsCsvAction.
+ */
+export async function exportAuditLogCsvAction(
+  from: string,
+  to: string
+): Promise<{ filename: string; csv: string }> {
+  const supabase = await createClient()
+  const { venueId, role } = await getProfile()
+  if (role !== "owner") throw new Error("Not authorized")
+
+  if (!from || !to) throw new Error("Both from and to dates are required")
+  if (from > to) throw new Error("Start date must be on or before end date")
+  const spanDays =
+    (new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / (24 * 60 * 60 * 1000)
+  if (spanDays > 366) throw new Error("Date range cannot exceed 1 year")
+
+  const { data: venue } = await supabase
+    .from("venues")
+    .select("name, timezone")
+    .eq("id", venueId)
+    .single()
+
+  const timezone = venue?.timezone ?? "UTC"
+  const { gte, lt } = businessDayRangeUTC(from, to, timezone)
+
+  // venue_id is our own filter, not user input — but audit_log also carries
+  // its own RLS policy (current_user_venue_id()) as a second, DB-level layer
+  // in case this filter is ever dropped in a future edit.
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("created_at, actor_id, actor_role, entity_type, entity_id, operation, before, after")
+    .eq("venue_id", venueId)
+    .gte("created_at", gte)
+    .lt("created_at", lt)
+    .order("created_at", { ascending: true })
+
+  if (error) throw error
+
+  const rows = (data ?? []) as AuditLogRow[]
+  const actorIds = [...new Set(rows.map((r) => r.actor_id).filter((id): id is string => !!id))]
+  const actorLabelById = await resolveActorLabels(supabase, actorIds)
+
+  const lines = [csvRow(AUDIT_CSV_HEADER)]
+  if (rows.length === 0) {
+    lines.push(csvRow(["No audit events in this range", "", "", "", "", "", ""]))
+  }
+  for (const row of rows) {
+    lines.push(
+      csvRow([
+        formatLocalDateTime(new Date(row.created_at), timezone),
+        row.actor_id ? actorLabelById.get(row.actor_id) ?? row.actor_id : "System",
+        row.actor_role ?? "",
+        row.entity_type,
+        row.entity_id,
+        row.operation,
+        formatAuditDiff(row.before, row.after),
+      ])
+    )
+  }
+
+  const venueSlug = (venue?.name ?? "venue")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+
+  return {
+    filename: `chalk-audit-log-${venueSlug}-${from}-to-${to}.csv`,
     csv: lines.join("\r\n"),
   }
 }

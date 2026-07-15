@@ -10,14 +10,16 @@ vi.mock("next/server", () => ({
   },
 }))
 vi.mock("@/utils/supabase/server", () => ({ createClient: vi.fn() }))
+// billing/server.ts (imported transitively via requireRole) pulls in
+// createAdminClient, which imports "server-only" — that doesn't resolve
+// under vitest, so this module must stay mocked even though this route no
+// longer calls createAdminClient itself.
 vi.mock("@/utils/supabase/admin", () => ({ createAdminClient: vi.fn() }))
 
 import { DELETE } from "@/app/api/team/invite/[inviteId]/route"
 import { createClient } from "@/utils/supabase/server"
-import { createAdminClient } from "@/utils/supabase/admin"
 
 const mockedCreateClient = vi.mocked(createClient)
-const mockedCreateAdminClient = vi.mocked(createAdminClient)
 const params = (inviteId: string) => ({ params: Promise.resolve({ inviteId }) })
 
 const INVITE = {
@@ -28,45 +30,38 @@ const INVITE = {
   expires_at: "2026-07-08T00:00:00Z",
 }
 
-function ownerSession() {
-  mockedCreateClient.mockResolvedValue(
-    createMockClient({
-      session: makeSession("u1", { venue_id: "v1", role: "owner" }),
-    }) as never
-  )
-}
-
-function adminWithInvite(invite: typeof INVITE | null = INVITE) {
+// The route now does the lookup + delete through the caller's own
+// JWT-scoped client (not the admin client), so the audit_venue_invites
+// trigger can attribute the row to this owner via auth.uid().
+function ownerClientWithInvite(invite: typeof INVITE | null = INVITE) {
   let callCount = 0
-  mockedCreateAdminClient.mockReturnValue(
-    createMockClient({
-      tables: {
-        venue_invites: () => {
-          callCount++
-          // First call: lookup, second call: delete
-          if (callCount === 1) return { data: invite, error: null }
-          return { data: null, error: null }
-        },
-        audit_log: { data: null, error: null },
+  const client = createMockClient({
+    session: makeSession("u1", { venue_id: "v1", role: "owner" }),
+    tables: {
+      venue_invites: () => {
+        callCount++
+        // First call: lookup, second call: delete
+        if (callCount === 1) return { data: invite, error: null }
+        return { data: null, error: null }
       },
-    }) as never
-  )
+    },
+  })
+  mockedCreateClient.mockResolvedValue(client as never)
+  return client
 }
 
 beforeEach(() => vi.clearAllMocks())
 
 describe("DELETE /api/team/invite/[inviteId]", () => {
   it("deletes the invite and returns ok", async () => {
-    ownerSession()
-    adminWithInvite()
+    const client = ownerClientWithInvite()
 
     const res = await DELETE({} as never, params("inv1"))
     const body = await res.json()
     expect(res.status).toBe(200)
     expect(body.ok).toBe(true)
 
-    const adminClient = mockedCreateAdminClient.mock.results[0].value
-    const inviteBuilders = adminClient.buildersFor("venue_invites")
+    const inviteBuilders = client.buildersFor("venue_invites")
     expect(inviteBuilders).toHaveLength(2)
     // Second call is the delete
     expect(inviteBuilders[1].delete).toHaveBeenCalled()
@@ -74,31 +69,16 @@ describe("DELETE /api/team/invite/[inviteId]", () => {
     expect(inviteBuilders[1].eq).toHaveBeenCalledWith("venue_id", "v1")
   })
 
-  it("writes an audit log entry on successful revoke", async () => {
-    ownerSession()
-    adminWithInvite()
+  it("does not write audit_log directly — the audit_venue_invites DB trigger owns that", async () => {
+    const client = ownerClientWithInvite()
 
     await DELETE({} as never, params("inv1"))
 
-    const adminClient = mockedCreateAdminClient.mock.results[0].value
-    expect(adminClient.from).toHaveBeenCalledWith("audit_log")
-    const auditBuilder = adminClient.buildersFor("audit_log")[0]
-    expect(auditBuilder.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        venue_id: "v1",
-        actor_id: "u1",
-        actor_role: "owner",
-        entity_type: "venue_invite",
-        entity_id: "inv1",
-        operation: "revoke",
-        before: INVITE,
-      })
-    )
+    expect(client.from).not.toHaveBeenCalledWith("audit_log")
   })
 
   it("returns 404 when the invite does not exist", async () => {
-    ownerSession()
-    adminWithInvite(null)
+    ownerClientWithInvite(null)
 
     const res = await DELETE({} as never, params("missing"))
     expect(res.status).toBe(404)
@@ -134,9 +114,9 @@ describe("DELETE /api/team/invite/[inviteId]", () => {
   })
 
   it("returns 500 when the database lookup fails", async () => {
-    ownerSession()
-    mockedCreateAdminClient.mockReturnValue(
+    mockedCreateClient.mockResolvedValue(
       createMockClient({
+        session: makeSession("u1", { venue_id: "v1", role: "owner" }),
         tables: { venue_invites: { data: null, error: { message: "db error" } } },
       }) as never
     )
