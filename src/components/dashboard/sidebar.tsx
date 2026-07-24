@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   ChevronLeft,
   Settings,
+  Truck,
 } from "lucide-react"
 
 type NavItem = {
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { key: "admin-tables", label: "Tables", icon: LayoutGrid, href: "/admin/tables", adminOnly: true },
   { key: "admin-rates", label: "Rate tiers", icon: DollarSign, href: "/admin/rates", adminOnly: true },
+  { key: "admin-shipments", label: "Shipments", icon: Truck, href: "/admin/shipments", adminOnly: true },
   { key: "admin-settings", label: "Settings", icon: Settings, href: "/admin/settings", adminOnly: true },
 ]
 
