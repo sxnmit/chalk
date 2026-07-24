@@ -116,6 +116,8 @@ function BreakdownRow({ label, value }: { label: string; value: string }) {
 
 const EMPTY: RevenueData = {
   totalRevenue: 0,
+  grossRevenue: 0,
+  refundsTotal: 0,
   tableRevenue: 0,
   itemsRevenue: 0,
   taxCollected: 0,
@@ -319,8 +321,14 @@ export function RevenuePageClient() {
                     <BreakdownRow label="Food & drink" value={formatCurrency(data.itemsRevenue, data.currency)} />
                     <BreakdownRow label="Tax" value={formatCurrency(data.taxCollected, data.currency)} />
                     <BreakdownRow label="Tips" value={formatCurrency(data.tipsCollected, data.currency)} />
+                    {data.refundsTotal > 0 && (
+                      <div className="flex items-center justify-between px-5 py-3.5">
+                        <dt className="text-sm text-muted-foreground">Refunds &amp; voids</dt>
+                        <dd className="tabular-nums font-medium text-destructive">-{formatCurrency(data.refundsTotal, data.currency)}</dd>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between bg-secondary/20 px-5 py-4">
-                      <dt className="text-sm font-semibold text-foreground">Total collected</dt>
+                      <dt className="text-sm font-semibold text-foreground">{data.refundsTotal > 0 ? "Net collected" : "Total collected"}</dt>
                       <dd className="tabular-nums text-lg font-bold text-success">{formatCurrency(data.totalRevenue, data.currency)}</dd>
                     </div>
                   </dl>
