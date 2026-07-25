@@ -97,6 +97,7 @@ export default function ReceiptPage() {
           sessionId={sessionId}
           paymentId={paymentId}
           remainingCents={remainingCents}
+          currency={data.currency}
           onRefunded={load}
         />
       )}

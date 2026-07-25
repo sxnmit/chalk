@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { formatCAD } from "@/lib/format"
+import { formatMoney } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 type RefundKind = "refund" | "void" | "comp"
 
@@ -16,14 +18,16 @@ interface RefundDialogProps {
   paymentId: string
   /** Remaining refundable balance in cents (grand total − already refunded). */
   remainingCents: number
+  /** Venue currency (e.g. "CAD", "USD") — matches the receipt this produces. */
+  currency?: string
   /** Called after a successful refund so the caller can refresh the receipt. */
   onRefunded: () => void
 }
 
-const KINDS: { value: RefundKind; label: string; hint: string }[] = [
-  { value: "refund", label: "Refund", hint: "Return part or all of the sale" },
-  { value: "void", label: "Void", hint: "Reverse the entire sale" },
-  { value: "comp", label: "Comp", hint: "Manager comp / zero-out" },
+const KINDS: { value: RefundKind; label: string; verb: string; hint: string }[] = [
+  { value: "refund", label: "Refund", verb: "Refund", hint: "Return part or all of the sale" },
+  { value: "void", label: "Void", verb: "Void", hint: "Reverse the entire sale" },
+  { value: "comp", label: "Comp", verb: "Comp", hint: "Manager comp / zero-out" },
 ]
 
 export function RefundDialog({
@@ -32,39 +36,40 @@ export function RefundDialog({
   sessionId,
   paymentId,
   remainingCents,
+  currency = "CAD",
   onRefunded,
 }: RefundDialogProps) {
   const [kind, setKind] = useState<RefundKind>("refund")
+  // `amountStr` is the raw edit buffer — bound directly to the input so
+  // multi-digit and decimal entry ("12.50") work. amountCents is derived from
+  // it for validation and the submit label.
   const [amountStr, setAmountStr] = useState((remainingCents / 100).toFixed(2))
   const [reason, setReason] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  const fmt = (cents: number) => formatMoney(cents, currency)
+  const activeKind = KINDS.find((k) => k.value === kind) ?? KINDS[0]
 
   // A void always reverses the full remaining balance; force the amount.
   const isVoid = kind === "void"
   const amountCents = isVoid ? remainingCents : Math.round(parseFloat(amountStr) * 100)
+  const amountEntered = !isNaN(amountCents)
+  const exceedsBalance = amountEntered && amountCents > remainingCents
 
   useEffect(() => {
     if (open) {
       setKind("refund")
       setAmountStr((remainingCents / 100).toFixed(2))
       setReason("")
-      setError(null)
     }
   }, [open, remainingCents])
 
-  useEffect(() => {
-    if (isVoid) setAmountStr((remainingCents / 100).toFixed(2))
-  }, [isVoid, remainingCents])
-
-  const amountValid =
-    !isNaN(amountCents) && amountCents >= 1 && amountCents <= remainingCents
+  const amountValid = amountEntered && amountCents >= 1 && amountCents <= remainingCents
   const canSubmit = amountValid && reason.trim().length > 0 && !loading
 
   async function handleSubmit() {
     if (!canSubmit) return
     setLoading(true)
-    setError(null)
     try {
       const res = await fetch(`/api/sessions/${sessionId}/refund`, {
         method: "POST",
@@ -78,17 +83,22 @@ export function RefundDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(typeof data.error === "string" ? data.error : "Refund failed")
+        toast.error(typeof data.error === "string" ? data.error : "Refund failed")
         return
       }
+      toast.success(`${activeKind.verb} of ${fmt(amountCents)} processed`)
       onRefunded()
       onOpenChange(false)
     } catch {
-      setError("Refund failed")
+      toast.error("Refund failed")
     } finally {
       setLoading(false)
     }
   }
+
+  // What the input shows: void is forced to the full balance; otherwise the
+  // raw buffer (which may be empty mid-edit — never render "NaN").
+  const amountInputValue = isVoid ? (remainingCents / 100).toFixed(2) : amountStr
 
   return (
     <Dialog open={open} onOpenChange={(v) => !loading && onOpenChange(v)}>
@@ -96,7 +106,7 @@ export function RefundDialog({
         <DialogHeader>
           <DialogTitle>Refund / Void</DialogTitle>
           <DialogDescription>
-            Refundable balance: <span className="font-semibold text-foreground">{formatCAD(remainingCents)}</span>
+            Refundable balance: <span className="font-semibold text-foreground">{fmt(remainingCents)}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -110,18 +120,20 @@ export function RefundDialog({
                   key={k.value}
                   type="button"
                   onClick={() => setKind(k.value)}
-                  title={k.hint}
-                  className={
-                    "rounded-lg border px-2 py-2 text-sm font-medium transition-colors " +
-                    (kind === k.value
+                  aria-pressed={kind === k.value}
+                  className={cn(
+                    "rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
+                    kind === k.value
                       ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border/50 bg-secondary/40 text-muted-foreground hover:border-primary/40")
-                  }
+                      : "border-border/50 bg-secondary/40 text-muted-foreground hover:border-primary/40"
+                  )}
                 >
                   {k.label}
                 </button>
               ))}
             </div>
+            {/* Visible helper (POS tablets have no hover tooltips). */}
+            <p className="text-xs text-muted-foreground">{activeKind.hint}</p>
           </div>
 
           {/* Amount */}
@@ -132,18 +144,18 @@ export function RefundDialog({
               <Input
                 id="refund-amount"
                 className="pl-7 text-lg font-semibold"
-                value={(amountCents / 100).toFixed(2)}
+                value={amountInputValue}
                 onChange={(e) => setAmountStr(e.target.value)}
-                type="number"
-                min="0.01"
-                max={(remainingCents / 100).toFixed(2)}
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 disabled={isVoid}
               />
             </div>
-            {isVoid && (
+            {isVoid ? (
               <p className="text-xs text-muted-foreground">A void reverses the full remaining balance.</p>
-            )}
+            ) : exceedsBalance ? (
+              <p className="text-xs text-destructive">Exceeds refundable balance ({fmt(remainingCents)}).</p>
+            ) : null}
           </div>
 
           {/* Reason (required) */}
@@ -159,12 +171,8 @@ export function RefundDialog({
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
           <Button className="w-full" size="lg" disabled={!canSubmit} onClick={handleSubmit}>
-            {loading
-              ? "Processing…"
-              : `${isVoid ? "Void" : kind === "comp" ? "Comp" : "Refund"} ${formatCAD(amountCents || 0)}`}
+            {loading ? "Processing…" : `${activeKind.verb} ${fmt(amountEntered ? amountCents : 0)}`}
           </Button>
         </div>
       </DialogContent>
