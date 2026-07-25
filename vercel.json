@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/stock-shipments",
+      "schedule": "0 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
