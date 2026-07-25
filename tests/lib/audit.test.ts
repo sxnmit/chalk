@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest"
-import { formatAuditDiff, withAuditContext } from "@/lib/audit"
+import {
+  collectShipmentIds,
+  formatAuditDiff,
+  formatAuditSource,
+  withAuditContext,
+} from "@/lib/audit"
 
 describe("formatAuditDiff", () => {
   it("reports an insert as Created", () => {
@@ -63,5 +68,74 @@ describe("withAuditContext", () => {
 
     await expect(withAuditContext(supabase, {}, fn)).rejects.toThrow("permission denied")
     expect(fn).not.toHaveBeenCalled()
+  })
+})
+
+describe("formatAuditSource", () => {
+  const names = new Map([
+    ["ship-1", "Beer delivery"],
+    ["ship-2", "Snacks"],
+  ])
+
+  it("returns empty for null/undefined context", () => {
+    expect(formatAuditSource(null, names)).toBe("")
+    expect(formatAuditSource(undefined, names)).toBe("")
+  })
+
+  it("returns empty when context.source is not a known shipment source", () => {
+    expect(formatAuditSource({ source: "future_webhook" }, names)).toBe("")
+    expect(formatAuditSource({ note: "nope" }, names)).toBe("")
+    expect(formatAuditSource({}, names)).toBe("")
+  })
+
+  it("labels shipment_cron rows as (scheduled) with the shipment name", () => {
+    expect(
+      formatAuditSource({ source: "shipment_cron", shipment_id: "ship-1" }, names)
+    ).toBe("Shipment (scheduled): Beer delivery")
+  })
+
+  it("labels shipment_manual rows as (manual) with the shipment name", () => {
+    expect(
+      formatAuditSource({ source: "shipment_manual", shipment_id: "ship-2" }, names)
+    ).toBe("Shipment (manual): Snacks")
+  })
+
+  it("falls back to (deleted) when the shipment id isn't in the lookup", () => {
+    expect(
+      formatAuditSource({ source: "shipment_cron", shipment_id: "ship-gone" }, names)
+    ).toBe("Shipment (scheduled): (deleted)")
+  })
+
+  it("falls back to (unknown) when shipment_id is missing", () => {
+    expect(
+      formatAuditSource({ source: "shipment_cron" }, names)
+    ).toBe("Shipment (scheduled): (unknown)")
+  })
+})
+
+describe("collectShipmentIds", () => {
+  it("returns [] for an empty input", () => {
+    expect(collectShipmentIds([])).toEqual([])
+  })
+
+  it("skips null/undefined and non-shipment contexts", () => {
+    expect(
+      collectShipmentIds([
+        null,
+        undefined,
+        { source: "webhook" },
+        { source: "shipment_cron", shipment_id: "ship-1" },
+      ])
+    ).toEqual(["ship-1"])
+  })
+
+  it("dedupes shipment_ids across mixed cron/manual contexts", () => {
+    const ids = collectShipmentIds([
+      { source: "shipment_cron", shipment_id: "ship-a" },
+      { source: "shipment_manual", shipment_id: "ship-b", triggered_by: "u1" },
+      { source: "shipment_cron", shipment_id: "ship-a" },
+      { source: "shipment_cron" }, // no shipment_id -> ignored
+    ])
+    expect(ids.sort()).toEqual(["ship-a", "ship-b"])
   })
 })

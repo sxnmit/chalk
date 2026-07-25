@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getProfile } from "@/lib/auth"
 import { businessDayRangeUTC, businessDayOf, formatLocalDateTime } from "@/lib/business-day"
-import { formatAuditDiff } from "@/lib/audit"
+import { formatAuditDiff, formatAuditSource, collectShipmentIds } from "@/lib/audit"
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -304,9 +304,10 @@ interface AuditLogRow {
   operation: string
   before: Record<string, unknown> | null
   after: Record<string, unknown> | null
+  context: Record<string, unknown> | null
 }
 
-const AUDIT_CSV_HEADER = ["Timestamp", "Actor", "Role", "Entity", "Entity ID", "Operation", "Summary of Change"]
+const AUDIT_CSV_HEADER = ["Timestamp", "Actor", "Role", "Entity", "Entity ID", "Operation", "Source", "Summary of Change"]
 
 /**
  * Maps actor_id -> a display label: the legacy `users.name` when present
@@ -370,7 +371,7 @@ export async function exportAuditLogCsvAction(
   // in case this filter is ever dropped in a future edit.
   const { data, error } = await supabase
     .from("audit_log")
-    .select("created_at, actor_id, actor_role, entity_type, entity_id, operation, before, after")
+    .select("created_at, actor_id, actor_role, entity_type, entity_id, operation, before, after, context")
     .eq("venue_id", venueId)
     .gte("created_at", gte)
     .lt("created_at", lt)
@@ -382,9 +383,21 @@ export async function exportAuditLogCsvAction(
   const actorIds = [...new Set(rows.map((r) => r.actor_id).filter((id): id is string => !!id))]
   const actorLabelById = await resolveActorLabels(supabase, actorIds)
 
+  const shipmentIds = collectShipmentIds(rows.map((r) => r.context))
+  const shipmentNameById = new Map<string, string>()
+  if (shipmentIds.length > 0) {
+    const { data: shipments } = await supabase
+      .from("stock_shipments")
+      .select("id, name")
+      .eq("venue_id", venueId)
+      .in("id", shipmentIds)
+    for (const s of shipments ?? []) shipmentNameById.set(s.id, s.name)
+  }
+
+  const emptyCols = new Array(AUDIT_CSV_HEADER.length - 1).fill("")
   const lines = [csvRow(AUDIT_CSV_HEADER)]
   if (rows.length === 0) {
-    lines.push(csvRow(["No audit events in this range", "", "", "", "", "", ""]))
+    lines.push(csvRow(["No audit events in this range", ...emptyCols]))
   }
   for (const row of rows) {
     lines.push(
@@ -395,6 +408,7 @@ export async function exportAuditLogCsvAction(
         row.entity_type,
         row.entity_id,
         row.operation,
+        formatAuditSource(row.context, shipmentNameById),
         formatAuditDiff(row.before, row.after),
       ])
     )

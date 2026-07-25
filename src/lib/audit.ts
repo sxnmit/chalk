@@ -45,3 +45,42 @@ export function formatAuditDiff(
 
   return changes.length > 0 ? changes.join("; ") : "No field changes"
 }
+
+/**
+ * Pretty-print an audit_log row's `context` JSONB for a human-facing "Source"
+ * column. Today only shipment_cron / shipment_manual set context; anything
+ * else (or missing context) collapses to an empty label so unattributed rows
+ * stay blank instead of leaking raw JSON.
+ *
+ * `shipmentNameById` is a lookup produced by the CSV exporter — shipments
+ * referenced by an old audit row may have been deleted since, in which case
+ * we fall back to "(deleted)" rather than a bare UUID.
+ */
+export function formatAuditSource(
+  context: Record<string, unknown> | null | undefined,
+  shipmentNameById: Map<string, string>
+): string {
+  if (!context || typeof context !== "object") return ""
+  const source = typeof context.source === "string" ? context.source : ""
+  if (source !== "shipment_cron" && source !== "shipment_manual") return ""
+
+  const shipmentId = typeof context.shipment_id === "string" ? context.shipment_id : ""
+  const name = shipmentId ? (shipmentNameById.get(shipmentId) ?? "(deleted)") : "(unknown)"
+  const kind = source === "shipment_cron" ? "scheduled" : "manual"
+  return `Shipment (${kind}): ${name}`
+}
+
+/** Extract distinct shipment IDs referenced by audit_log rows' context JSONB. */
+export function collectShipmentIds(
+  contexts: Array<Record<string, unknown> | null | undefined>
+): string[] {
+  const ids = new Set<string>()
+  for (const ctx of contexts) {
+    if (!ctx || typeof ctx !== "object") continue
+    const source = typeof ctx.source === "string" ? ctx.source : ""
+    if (source !== "shipment_cron" && source !== "shipment_manual") continue
+    const shipmentId = typeof ctx.shipment_id === "string" ? ctx.shipment_id : ""
+    if (shipmentId) ids.add(shipmentId)
+  }
+  return [...ids]
+}
