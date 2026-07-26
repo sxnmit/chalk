@@ -28,7 +28,10 @@ export function EndSessionModal({ table, rates, peakSchedule, currency, onConfir
   const rate = rates.find((r) => r.id === session.rateId)
   const peakRate = rates.reduce((max, r) => Math.max(max, r.pricePerHour), 0)
   const endTime = new Date()
-  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate, endTime, peakSchedule)
+  // Bill against the rate snapshotted at session start, not the rate row's
+  // current price — see table-card.tsx for why these must match checkout.
+  const billingRate = rate ? { ...rate, pricePerHour: session.actualRateCharged } : undefined
+  const amountOwed = calculateAmountOwed(session.startTime, billingRate, peakRate, endTime, peakSchedule)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -76,7 +79,7 @@ export function EndSessionModal({ table, rates, peakSchedule, currency, onConfir
           <div className="flex justify-between">
             <span className="text-muted-foreground">Rate</span>
             <span className="text-foreground">
-              {rate?.name} ({formatCurrency(rate?.pricePerHour ?? 25, currency)}/hr)
+              {rate?.name} ({formatCurrency(session.actualRateCharged, currency)}/hr)
             </span>
           </div>
 

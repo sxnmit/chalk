@@ -53,7 +53,12 @@ function OccupiedContent({ session, rate, peakRate, peakSchedule, currency }: Oc
     return () => clearInterval(interval)
   }, [])
 
-  const amountOwed = calculateAmountOwed(session.startTime, rate, peakRate, undefined, peakSchedule)
+  // Bill against the rate snapshotted at session start, not the rate row's
+  // current price — the rate may have been edited since, and checkout charges
+  // the snapshot (see sessionTableTotalCents), so this must match it.
+  const billingRate = rate ? { ...rate, pricePerHour: session.actualRateCharged } : undefined
+  const tableAmountOwed = calculateAmountOwed(session.startTime, billingRate, peakRate, undefined, peakSchedule)
+  const amountOwed = tableAmountOwed + session.itemsTotalCents / 100
 
   return (
     <div className="flex flex-1 flex-col justify-between py-2">
