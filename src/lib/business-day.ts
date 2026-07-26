@@ -34,7 +34,7 @@ function hourInTz(d: Date, timezone: string): number {
 }
 
 /** Shift a plain `YYYY-MM-DD` calendar date by `n` days (pure date math, tz-agnostic). */
-function addDays(dateStr: string, n: number): string {
+export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split("-").map(Number)
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
 }

@@ -1,6 +1,7 @@
 "use client"
 
-import { Menu, Users, CheckCircle } from "lucide-react"
+import { Menu, Users, CheckCircle, DollarSign } from "lucide-react"
+import { formatMoney } from "@/lib/format"
 
 interface StatChipProps {
   icon: React.ReactNode
@@ -76,11 +77,19 @@ export function Header({
 export interface StatBarProps {
   activeTables: number
   completedSessions: number
+  todayRevenue: number
+  currency: string
 }
 
-export function StatBar({ activeTables, completedSessions }: StatBarProps) {
+export function StatBar({ activeTables, completedSessions, todayRevenue, currency }: StatBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-4 sm:px-6 lg:justify-end xl:px-8">
+      <StatChip
+        icon={<DollarSign className="h-4 w-4 lg:h-5 lg:w-5" />}
+        label="Revenue Today"
+        value={formatMoney(Math.round(todayRevenue * 100), currency)}
+        highlight
+      />
       <StatChip
         icon={<Users className="h-4 w-4 lg:h-5 lg:w-5" />}
         label="Active Tables"

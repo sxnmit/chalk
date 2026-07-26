@@ -70,7 +70,7 @@ describe("POST /api/menu", () => {
 
   it("rejects staff with 403", async () => {
     withRole("staff")
-    const res = (await menuPost(fakeRequest(validBody))) as { status: number; body: { error: string } }
+    const res = (await menuPost(fakeRequest(validBody))) as unknown as { status: number; body: { error: string } }
     expect(res.status).toBe(403)
     expect(res.body.error).toBe("Forbidden")
   })
@@ -86,7 +86,7 @@ describe("PATCH /api/menu/[id]", () => {
 
   it("rejects staff with 403", async () => {
     withRole("staff")
-    const res = (await menuPatch(fakeRequest({ name: "Renamed" }), fakeParams("m1"))) as {
+    const res = (await menuPatch(fakeRequest({ name: "Renamed" }), fakeParams("m1"))) as unknown as {
       status: number
       body: { error: string }
     }
@@ -105,7 +105,7 @@ describe("DELETE /api/menu/[id]", () => {
 
   it("rejects staff with 403", async () => {
     withRole("staff")
-    const res = (await menuDelete({} as never, fakeParams("m1"))) as { status: number; body: { error: string } }
+    const res = (await menuDelete({} as never, fakeParams("m1"))) as unknown as { status: number; body: { error: string } }
     expect(res.status).toBe(403)
     expect(res.body.error).toBe("Forbidden")
   })
@@ -124,7 +124,7 @@ describe("/api/admin/tables", () => {
 
   it("GET rejects staff with 403", async () => {
     withRole("staff")
-    const res = (await adminTablesGet()) as { status: number; body: { error: string } }
+    const res = (await adminTablesGet()) as unknown as { status: number; body: { error: string } }
     expect(res.status).toBe(403)
     expect(res.body.error).toBe("Forbidden")
   })
@@ -133,7 +133,7 @@ describe("/api/admin/tables", () => {
     withRole("staff")
     const res = (await adminTablesPost(
       fakeRequest({ name: "Table 1", size: "9ft", admin_status: "active" })
-    )) as { status: number; body: { error: string } }
+    )) as unknown as { status: number; body: { error: string } }
     expect(res.status).toBe(403)
     expect(res.body.error).toBe("Forbidden")
   })
@@ -152,7 +152,7 @@ describe("/api/admin/rates", () => {
 
   it("GET rejects staff with 403", async () => {
     withRole("staff")
-    const res = (await adminRatesGet()) as { status: number; body: { error: string } }
+    const res = (await adminRatesGet()) as unknown as { status: number; body: { error: string } }
     expect(res.status).toBe(403)
     expect(res.body.error).toBe("Forbidden")
   })
@@ -161,7 +161,7 @@ describe("/api/admin/rates", () => {
     withRole("staff")
     const res = (await adminRatesPost(
       fakeRequest({ label: "League", hourly_rate: 15, active: true, is_default: false })
-    )) as { status: number; body: { error: string } }
+    )) as unknown as { status: number; body: { error: string } }
     expect(res.status).toBe(403)
     expect(res.body.error).toBe("Forbidden")
   })
