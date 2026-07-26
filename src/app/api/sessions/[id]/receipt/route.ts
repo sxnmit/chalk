@@ -47,10 +47,11 @@ export async function GET(
       .eq("session_id", sessionId)
       .eq("venue_id", venueId)
 
-    if (itemsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    if (itemsErr) {
+      console.error("Receipt: order_items query failed", itemsErr)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
 
-    // Refunds/voids/comps recorded against this payment (append-only child of
-    // payments). Venue-scoped so it survives RLS. Newest first for display.
     const { data: refundRows, error: refundsErr } = await supabase
       .from("refunds")
       .select("amount_cents, reason, kind, created_at")
@@ -58,7 +59,10 @@ export async function GET(
       .eq("venue_id", venueId)
       .order("created_at", { ascending: false })
 
-    if (refundsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    if (refundsErr) {
+      console.error("Receipt: refunds query failed", refundsErr)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
 
     const refunds = (refundRows ?? []).map((r) => ({
       amount_cents: r.amount_cents,
@@ -111,11 +115,11 @@ export async function GET(
       canRefund: role === "owner" || role === "manager",
     })
   } catch (e) {
-    console.error("Receipt generation failed:", e)
-    const isAuthError = e instanceof Error && e.message === "Not authenticated"
-    return NextResponse.json(
-      { error: isAuthError ? "Unauthorized" : "Internal server error" },
-      { status: isAuthError ? 401 : 500 },
-    )
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error("Receipt generation failed:", msg, e)
+    if (msg === "Not authenticated") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    return NextResponse.json({ error: "Internal server error", detail: msg }, { status: 500 })
   }
 }
