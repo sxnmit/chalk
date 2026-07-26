@@ -24,15 +24,22 @@ export async function GET(
         .single(),
       supabase
         .from("sessions")
-        .select("*, tables(name), venues(name, receipt_footer, currency), rates(label)")
+        .select("*, tables(name), rates(label)")
         .eq("id", sessionId)
         .eq("venue_id", venueId)
         .single(),
     ])
 
     if (paymentErr || sessionErr || !payment || !session) {
+      console.error("Receipt query failed", { paymentErr, sessionErr })
       return NextResponse.json({ error: "Receipt not found" }, { status: 404 })
     }
+
+    const { data: venue } = await supabase
+      .from("venues")
+      .select("name, receipt_footer, currency")
+      .eq("id", venueId)
+      .maybeSingle()
 
     const { data: orderItems, error: itemsErr } = await supabase
       .from("order_items")
@@ -67,14 +74,13 @@ export async function GET(
       (new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000
     )
     const tables = session.tables as unknown as { name: string } | null
-    const venues = session.venues as unknown as { name: string; receipt_footer?: string; currency?: string } | null
 
     const isTab = session.table_id === null
 
     return NextResponse.json({
-      venueName: venues?.name ?? "Venue",
-      receiptFooter: venues?.receipt_footer ?? "",
-      currency: venues?.currency ?? "CAD",
+      venueName: venue?.name ?? "Venue",
+      receiptFooter: venue?.receipt_footer ?? "",
+      currency: venue?.currency ?? "CAD",
       receiptNumber: paymentId.slice(-8).toUpperCase(),
       createdAt: payment.created_at,
       tableName: tables?.name ?? (isTab ? (session.player_name || "Tab") : "Table"),
