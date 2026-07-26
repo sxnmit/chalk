@@ -24,6 +24,18 @@ export interface ReceiptData {
   grandTotalCents: number
   method: "card" | "cash" | "terminal"
   cardLast4?: string | null
+  refunds?: { amount_cents: number; reason: string; kind: "refund" | "void" | "comp"; created_at: string }[]
+  refundedTotalCents?: number
+  netPaidCents?: number
+  // Refund-control metadata (used by the receipt page, not rendered on the slip).
+  canRefund?: boolean
+  paymentStatus?: string
+}
+
+const REFUND_KIND_LABEL: Record<"refund" | "void" | "comp", string> = {
+  refund: "Refund",
+  void: "Void",
+  comp: "Comp",
 }
 
 function formatDuration(minutes: number): string {
@@ -128,6 +140,32 @@ export const Receipt = forwardRef<HTMLDivElement, { data: ReceiptData }>(({ data
           <span>{fmt(data.grandTotalCents)}</span>
         </div>
       </div>
+
+      {/* Refunds / voids / comps */}
+      {(data.refundedTotalCents ?? 0) > 0 && (
+        <>
+          <Separator className="bg-gray-300 my-2" />
+          <div className="space-y-0.5">
+            {(data.refunds ?? []).map((r, i) => (
+              <div key={i} className="flex justify-between text-red-600">
+                <span>
+                  {REFUND_KIND_LABEL[r.kind]}
+                  {r.reason ? ` — ${r.reason}` : ""}
+                </span>
+                <span>-{fmt(r.amount_cents)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between font-semibold text-red-600">
+              <span>Refunded</span>
+              <span>-{fmt(data.refundedTotalCents ?? 0)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-sm mt-1">
+              <span>NET PAID</span>
+              <span>{fmt(data.netPaidCents ?? data.grandTotalCents - (data.refundedTotalCents ?? 0))}</span>
+            </div>
+          </div>
+        </>
+      )}
 
       <Separator className="bg-gray-300 my-2" />
 

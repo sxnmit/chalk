@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient()
-    const { venueId } = await getProfile()
+    const { venueId, role } = await getProfile()
     const { id: sessionId } = await params
     const paymentId = request.nextUrl.searchParams.get("payment_id")
 
@@ -41,6 +41,25 @@ export async function GET(
       .eq("venue_id", venueId)
 
     if (itemsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+
+    // Refunds/voids/comps recorded against this payment (append-only child of
+    // payments). Venue-scoped so it survives RLS. Newest first for display.
+    const { data: refundRows, error: refundsErr } = await supabase
+      .from("refunds")
+      .select("amount_cents, reason, kind, created_at")
+      .eq("payment_id", paymentId)
+      .eq("venue_id", venueId)
+      .order("created_at", { ascending: false })
+
+    if (refundsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+
+    const refunds = (refundRows ?? []).map((r) => ({
+      amount_cents: r.amount_cents,
+      reason: r.reason,
+      kind: r.kind as "refund" | "void" | "comp",
+      created_at: r.created_at,
+    }))
+    const refundedTotalCents = refunds.reduce((sum, r) => sum + r.amount_cents, 0)
 
     const startedAt = session.started_at
     const endedAt = session.ended_at ?? new Date().toISOString()
@@ -77,6 +96,13 @@ export async function GET(
       grandTotalCents: payment.grand_total_cents,
       method: payment.method,
       cardLast4: null,
+      // Refund surface: history + running totals, plus whether the viewer may
+      // issue a reversal (owner/manager). netPaidCents = collected − refunded.
+      paymentStatus: payment.status,
+      refunds,
+      refundedTotalCents,
+      netPaidCents: payment.grand_total_cents - refundedTotalCents,
+      canRefund: role === "owner" || role === "manager",
     })
   } catch (e) {
     console.error("Receipt generation failed:", e)

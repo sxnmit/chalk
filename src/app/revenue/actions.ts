@@ -10,11 +10,13 @@ import { formatAuditDiff } from "@/lib/audit"
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
 export interface RevenueData {
-  totalRevenue: number        // grand total collected (table + items + tax + tip)
-  tableRevenue: number        // pool table time
-  itemsRevenue: number        // food & drink
-  taxCollected: number
-  tipsCollected: number
+  totalRevenue: number        // NET revenue kept: grossRevenue − refundsTotal
+  grossRevenue: number        // collected before refunds (table + items + tax, ex-tip)
+  refundsTotal: number        // refunds/voids/comps netted out of this period
+  tableRevenue: number        // pool table time (gross)
+  itemsRevenue: number        // food & drink (gross)
+  taxCollected: number        // gross
+  tipsCollected: number       // gross
   sessionCount: number        // number of completed (paid) sessions
   avgSessionMinutes: number
   byMethod: { method: string; count: number; revenue: number }[]
@@ -50,19 +52,37 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
   const cutoffHour = venue?.business_day_cutoff_hour ?? 3
   const { gte, lt } = businessDayRangeUTC(from, to, timezone, cutoffHour)
 
-  // Only succeeded payments count as revenue. Filter by the session's start
-  // time (inner-joined) so the range matches what staff see per business day.
+  // Collected sales in range. We include 'refunded' (fully-refunded) payments,
+  // not just 'succeeded', so their gross still lands here and is then netted
+  // back out below — otherwise a full refund would silently vanish rather than
+  // showing as gross − refund = 0. Range is the session's start time
+  // (inner-joined), matching what staff see per business day.
   const { data: payments, error } = await supabase
     .from("payments")
-    .select("grand_total_cents, table_total_cents, items_total_cents, tax_cents, tip_cents, method, sessions!inner(started_at, ended_at, rates(label))")
+    .select("id, grand_total_cents, table_total_cents, items_total_cents, tax_cents, tip_cents, method, sessions!inner(started_at, ended_at, rates(label))")
     .eq("venue_id", venueId)
-    .eq("status", "succeeded")
+    .in("status", ["succeeded", "refunded"])
     .gte("sessions.started_at", gte)
     .lt("sessions.started_at", lt)
 
   if (error) throw error
 
   const rows = payments ?? []
+
+  // Net out refunds/voids/comps recorded against those payments. Attributing a
+  // refund to its sale's period (not the refund's own date) keeps net revenue
+  // consistent with how gross is bucketed above.
+  const paymentIds = rows.map((p) => p.id as string)
+  let refundsTotalCents = 0
+  if (paymentIds.length > 0) {
+    const { data: refundRows, error: refundErr } = await supabase
+      .from("refunds")
+      .select("amount_cents")
+      .eq("venue_id", venueId)
+      .in("payment_id", paymentIds)
+    if (refundErr) throw refundErr
+    refundsTotalCents = (refundRows ?? []).reduce((sum, r) => sum + (r.amount_cents as number), 0)
+  }
 
   let totalRevenue = 0
   let tableRevenue = 0
@@ -115,8 +135,14 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
 
   const toDollars = (cents: number) => cents / 100
 
+  // `totalRevenue` accumulated above is GROSS (grand − tip). The headline number
+  // is net of refunds; the breakdown surfaces gross and refunds separately.
+  const grossRevenueCents = totalRevenue
+
   return {
-    totalRevenue: toDollars(totalRevenue),
+    totalRevenue: toDollars(grossRevenueCents - refundsTotalCents),
+    grossRevenue: toDollars(grossRevenueCents),
+    refundsTotal: toDollars(refundsTotalCents),
     tableRevenue: toDollars(tableRevenue),
     itemsRevenue: toDollars(itemsRevenue),
     taxCollected: toDollars(taxCollected),
