@@ -250,20 +250,20 @@ describe("exportAuditLogCsvAction", () => {
     expect(result.filename).toBe("chalk-audit-log-shy-lounge-2026-06-15-to-2026-06-15.csv")
 
     const lines = result.csv.split("\r\n")
-    expect(lines[0]).toBe("Timestamp,Actor,Role,Entity,Entity ID,Operation,Summary of Change")
+    expect(lines[0]).toBe("Timestamp,Actor,Role,Entity,Entity ID,Operation,Source,Summary of Change")
     // Legacy `users.name` takes precedence.
     expect(lines[1]).toBe(
-      "2026-06-15 17:00:00,Vish,owner,rates,r1,update,hourly_rate: 15 → 20"
+      "2026-06-15 17:00:00,Vish,owner,rates,r1,update,,hourly_rate: 15 → 20"
     )
     // No `users` row -> auth user_metadata.name.
-    expect(lines[2]).toBe("2026-06-15 18:00:00,Priya,staff,sessions,s1,insert,Created")
+    expect(lines[2]).toBe("2026-06-15 18:00:00,Priya,staff,sessions,s1,insert,,Created")
     // No metadata name -> auth email.
-    expect(lines[3]).toBe("2026-06-15 19:00:00,sam@example.com,manager,tables,t1,update,status: free → occupied")
+    expect(lines[3]).toBe("2026-06-15 19:00:00,sam@example.com,manager,tables,t1,update,,status: free → occupied")
     // No users row and no matching auth user -> raw actor id.
-    expect(lines[4]).toBe("2026-06-15 20:00:00,u-deleted,staff,sessions,s2,delete,Deleted")
+    expect(lines[4]).toBe("2026-06-15 20:00:00,u-deleted,staff,sessions,s2,delete,,Deleted")
     // Null actor_id (service-role/webhook mutation) -> "System".
     expect(lines[5]).toBe(
-      "2026-06-15 21:00:00,System,,payments,p1,update,status: pending → succeeded"
+      "2026-06-15 21:00:00,System,,payments,p1,update,,status: pending → succeeded"
     )
     expect(lines).toHaveLength(6)
 
@@ -283,7 +283,155 @@ describe("exportAuditLogCsvAction", () => {
 
     const result = await exportAuditLogCsvAction("2026-06-15", "2026-06-15")
     const lines = result.csv.split("\r\n")
-    expect(lines[1]).toBe("No audit events in this range,,,,,,")
+    expect(lines[1]).toBe("No audit events in this range,,,,,,,")
     expect(lines).toHaveLength(2)
+  })
+
+  it("labels shipment_cron / shipment_manual rows with the shipment name via the Source column", async () => {
+    withAuthUsers({ "u-owner": { user_metadata: { name: "Vish" } } })
+    const client = withClient(
+      createMockClient({
+        session: makeSession("u1", { venue_id: "v1", role: "owner" }),
+        tables: {
+          venues: venueRow,
+          users: { data: [], error: null },
+          audit_log: {
+            data: [
+              // Cron-driven stock bump: no actor, source=shipment_cron.
+              {
+                created_at: "2026-06-15T10:00:00Z",
+                actor_id: null,
+                actor_role: null,
+                entity_type: "menu_items",
+                entity_id: "m1",
+                operation: "update",
+                before: { stock_quantity: 4 },
+                after: { stock_quantity: 28 },
+                context: { source: "shipment_cron", shipment_id: "ship-beer" },
+              },
+              // Manual "Run now": actor present, source=shipment_manual.
+              {
+                created_at: "2026-06-15T11:00:00Z",
+                actor_id: "u-owner",
+                actor_role: "owner",
+                entity_type: "menu_items",
+                entity_id: "m2",
+                operation: "update",
+                before: { stock_quantity: 0 },
+                after: { stock_quantity: 12 },
+                context: { source: "shipment_manual", shipment_id: "ship-snacks", triggered_by: "u-owner" },
+              },
+              // Shipment schedule edit — CRUD on stock_shipments itself has no context.
+              {
+                created_at: "2026-06-15T12:00:00Z",
+                actor_id: "u-owner",
+                actor_role: "owner",
+                entity_type: "stock_shipments",
+                entity_id: "ship-beer",
+                operation: "update",
+                before: { active: true },
+                after: { active: false },
+                context: null,
+              },
+              // Cron row for a shipment that has since been deleted — no lookup match.
+              {
+                created_at: "2026-06-15T13:00:00Z",
+                actor_id: null,
+                actor_role: null,
+                entity_type: "menu_items",
+                entity_id: "m3",
+                operation: "update",
+                before: { stock_quantity: 2 },
+                after: { stock_quantity: 26 },
+                context: { source: "shipment_cron", shipment_id: "ship-deleted" },
+              },
+              // Unknown context.source — must not leak raw JSON into the CSV.
+              {
+                created_at: "2026-06-15T14:00:00Z",
+                actor_id: "u-owner",
+                actor_role: "owner",
+                entity_type: "rates",
+                entity_id: "r1",
+                operation: "update",
+                before: { hourly_rate: 15 },
+                after: { hourly_rate: 20 },
+                context: { source: "future_webhook", note: "n/a" },
+              },
+            ],
+            error: null,
+          },
+          stock_shipments: {
+            data: [
+              { id: "ship-beer", name: "Beer delivery" },
+              { id: "ship-snacks", name: "Snacks" },
+            ],
+            error: null,
+          },
+        },
+      })
+    )
+
+    const result = await exportAuditLogCsvAction("2026-06-15", "2026-06-15")
+    const lines = result.csv.split("\r\n")
+
+    expect(lines[0]).toBe("Timestamp,Actor,Role,Entity,Entity ID,Operation,Source,Summary of Change")
+    expect(lines[1]).toBe(
+      "2026-06-15 10:00:00,System,,menu_items,m1,update,Shipment (scheduled): Beer delivery,stock_quantity: 4 → 28"
+    )
+    expect(lines[2]).toBe(
+      "2026-06-15 11:00:00,Vish,owner,menu_items,m2,update,Shipment (manual): Snacks,stock_quantity: 0 → 12"
+    )
+    // Direct edit to a shipment row itself — context is null, Source blank.
+    expect(lines[3]).toBe(
+      "2026-06-15 12:00:00,Vish,owner,stock_shipments,ship-beer,update,,active: true → false"
+    )
+    // Deleted shipment falls back to a friendly "(deleted)" rather than a bare UUID.
+    expect(lines[4]).toBe(
+      "2026-06-15 13:00:00,System,,menu_items,m3,update,Shipment (scheduled): (deleted),stock_quantity: 2 → 26"
+    )
+    // Unknown source key — collapses to blank Source rather than exposing raw JSON.
+    expect(lines[5]).toBe(
+      "2026-06-15 14:00:00,Vish,owner,rates,r1,update,,hourly_rate: 15 → 20"
+    )
+    expect(lines).toHaveLength(6)
+
+    // The shipment-name lookup MUST be venue-scoped so a colliding UUID in
+    // another tenant's audit_log can never appear here.
+    const shipmentsBuilder = client.buildersFor("stock_shipments")[0]
+    expect(shipmentsBuilder.eq).toHaveBeenCalledWith("venue_id", "v1")
+    expect(shipmentsBuilder.in).toHaveBeenCalledWith("id", expect.arrayContaining(["ship-beer", "ship-snacks", "ship-deleted"]))
+  })
+
+  it("skips the shipment-name lookup entirely when no rows reference a shipment", async () => {
+    const client = withClient(
+      createMockClient({
+        session: makeSession("u1", { venue_id: "v1", role: "owner" }),
+        tables: {
+          venues: venueRow,
+          users: { data: [], error: null },
+          audit_log: {
+            data: [
+              {
+                created_at: "2026-06-15T09:00:00Z",
+                actor_id: null,
+                actor_role: null,
+                entity_type: "payments",
+                entity_id: "p1",
+                operation: "update",
+                before: { status: "pending" },
+                after: { status: "succeeded" },
+                context: null,
+              },
+            ],
+            error: null,
+          },
+        },
+      })
+    )
+
+    await exportAuditLogCsvAction("2026-06-15", "2026-06-15")
+
+    // No shipment-context rows -> we should not have queried stock_shipments at all.
+    expect(client.buildersFor("stock_shipments")).toHaveLength(0)
   })
 })
