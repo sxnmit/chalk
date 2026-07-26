@@ -78,6 +78,50 @@ describe("loadDashboardData", () => {
 
     expect(result.todayCompletedSessionsCount).toBe(1)
   })
+
+  it("sums order items onto the occupied table's session", async () => {
+    withClient(
+      createMockClient({
+        session: ownerSession,
+        tables: {
+          tables: {
+            data: [{ id: "t1", name: "Table 1", display_order: 1 }],
+            error: null,
+          },
+          sessions: {
+            data: [
+              {
+                id: "s1",
+                table_id: "t1",
+                rate_id: "r1",
+                started_at: "2026-06-28T16:00:00Z",
+                ended_at: null,
+                player_name: "Alice",
+                actual_rate_charged: 15,
+              },
+            ],
+            error: null,
+          },
+          rates: {
+            data: [{ id: "r1", label: "League", hourly_rate: 15, is_default: true, active: true }],
+            error: null,
+          },
+          venues: { data: { timezone: "America/New_York", name: "Shy Lounge" }, error: null },
+          order_items: {
+            data: [
+              { session_id: "s1", quantity: 2, price_at_time_cents: 1200 },
+              { session_id: "s1", quantity: 2, price_at_time_cents: 150 },
+            ],
+            error: null,
+          },
+        },
+      })
+    )
+
+    const result = await loadDashboardData()
+
+    expect(result.tables[0].session?.itemsTotalCents).toBe(2700)
+  })
 })
 
 describe("startSessionAction", () => {

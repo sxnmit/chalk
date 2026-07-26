@@ -193,6 +193,23 @@ export async function loadDashboardData(): Promise<{
 
   const sessionByTableId = new Map(tableSessions.map((s) => [s.table_id, s]))
 
+  const tableSessionIds = tableSessions.map((s) => s.id)
+  const { data: tableItemRows, error: tableItemsError } =
+    tableSessionIds.length > 0
+      ? await supabase
+          .from("order_items")
+          .select("session_id, quantity, price_at_time_cents")
+          .eq("venue_id", venueId)
+          .in("session_id", tableSessionIds)
+      : { data: [], error: null }
+  if (tableItemsError) { console.error("loadDashboardData table items fetch failed:", tableItemsError); throw new Error("Failed to load dashboard") }
+
+  const itemsCentsByTableSession = new Map<string, number>()
+  for (const i of tableItemRows ?? []) {
+    const cents = i.quantity * i.price_at_time_cents
+    itemsCentsByTableSession.set(i.session_id, (itemsCentsByTableSession.get(i.session_id) ?? 0) + cents)
+  }
+
   const tabs: OpenTab[] = tabSessions
     .map((s) => ({
       id: s.id,
@@ -211,6 +228,7 @@ export async function loadDashboardData(): Promise<{
           tableId: t.id,
           rateId: dbSession.rate_id,
           actualRateCharged: Number(dbSession.actual_rate_charged ?? 0),
+          itemsTotalCents: itemsCentsByTableSession.get(dbSession.id) ?? 0,
           startTime: new Date(dbSession.started_at),
           playerName: dbSession.player_name ?? undefined,
         }
