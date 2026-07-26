@@ -53,6 +53,7 @@ export async function GET(
       return NextResponse.json({ error: "Internal server error", detail: "order_items: " + itemsErr.message }, { status: 500 })
     }
 
+    let refunds: { amount_cents: number; reason: string; kind: "refund" | "void" | "comp"; created_at: string }[] = []
     const { data: refundRows, error: refundsErr } = await supabase
       .from("refunds")
       .select("amount_cents, reason, kind, created_at")
@@ -60,17 +61,14 @@ export async function GET(
       .eq("venue_id", venueId)
       .order("created_at", { ascending: false })
 
-    if (refundsErr) {
-      console.error("Receipt: refunds query failed", refundsErr)
-      return NextResponse.json({ error: "Internal server error", detail: "refunds: " + refundsErr.message }, { status: 500 })
+    if (!refundsErr) {
+      refunds = (refundRows ?? []).map((r) => ({
+        amount_cents: r.amount_cents,
+        reason: r.reason,
+        kind: r.kind as "refund" | "void" | "comp",
+        created_at: r.created_at,
+      }))
     }
-
-    const refunds = (refundRows ?? []).map((r) => ({
-      amount_cents: r.amount_cents,
-      reason: r.reason,
-      kind: r.kind as "refund" | "void" | "comp",
-      created_at: r.created_at,
-    }))
     const refundedTotalCents = refunds.reduce((sum, r) => sum + r.amount_cents, 0)
 
     const startedAt = session.started_at
