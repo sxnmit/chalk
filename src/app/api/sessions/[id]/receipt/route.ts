@@ -31,8 +31,9 @@ export async function GET(
     ])
 
     if (paymentErr || sessionErr || !payment || !session) {
+      const detail = paymentErr?.message ?? sessionErr?.message ?? "no matching rows"
       console.error("Receipt query failed", { paymentErr, sessionErr })
-      return NextResponse.json({ error: "Receipt not found" }, { status: 404 })
+      return NextResponse.json({ error: "Receipt not found", detail }, { status: 404 })
     }
 
     const { data: venue } = await supabase
@@ -49,7 +50,7 @@ export async function GET(
 
     if (itemsErr) {
       console.error("Receipt: order_items query failed", itemsErr)
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+      return NextResponse.json({ error: "Internal server error", detail: "order_items: " + itemsErr.message }, { status: 500 })
     }
 
     const { data: refundRows, error: refundsErr } = await supabase
@@ -61,7 +62,7 @@ export async function GET(
 
     if (refundsErr) {
       console.error("Receipt: refunds query failed", refundsErr)
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+      return NextResponse.json({ error: "Internal server error", detail: "refunds: " + refundsErr.message }, { status: 500 })
     }
 
     const refunds = (refundRows ?? []).map((r) => ({
