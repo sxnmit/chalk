@@ -152,7 +152,7 @@ export async function loadDashboardData(): Promise<{
   ] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, table_id, rate_id, started_at, player_name")
+      .select("id, table_id, rate_id, started_at, player_name, actual_rate_charged")
       .eq("venue_id", venueId)
       .is("ended_at", null),
     supabase
@@ -210,6 +210,7 @@ export async function loadDashboardData(): Promise<{
           id: dbSession.id,
           tableId: t.id,
           rateId: dbSession.rate_id,
+          actualRateCharged: Number(dbSession.actual_rate_charged ?? 0),
           startTime: new Date(dbSession.started_at),
           playerName: dbSession.player_name ?? undefined,
         }

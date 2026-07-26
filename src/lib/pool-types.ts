@@ -24,6 +24,7 @@ export interface TableSession {
   tableId: string
   playerName?: string
   rateId: string
+  actualRateCharged: number
   startTime: Date
   endTime?: Date
 }
