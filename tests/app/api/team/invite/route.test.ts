@@ -50,7 +50,13 @@ function withAdminClient(options: {
   existingInvite?: { id: string; token: string } | null
   inviteUserByEmail?: ReturnType<typeof vi.fn>
 } = {}) {
-  const { existingInvite = null, inviteUserByEmail = vi.fn(async () => ({ error: null })) } = options
+  const {
+    existingInvite = null,
+    inviteUserByEmail = vi.fn(async () => ({
+      data: { user: { id: "invited-user-1" } },
+      error: null,
+    })),
+  } = options
 
   let venueInvitesCalls = 0
   const client = createMockClient({
@@ -146,7 +152,14 @@ describe("POST /api/team/invite", () => {
     )
     expect(client.auth.admin.inviteUserByEmail).toHaveBeenCalledWith(
       "new@example.com",
-      expect.objectContaining({ redirectTo: expect.stringContaining("/accept-invite?token=") })
+      expect.objectContaining({ redirectTo: expect.stringContaining("/signup?token=") })
+    )
+
+    // The invitee's pre-created (passwordless) user id is recorded on the
+    // invite so the claim flow can attach their password to it later.
+    const invitedUserUpdate = client.buildersFor("venue_invites")[2]
+    expect(invitedUserUpdate.update).toHaveBeenCalledWith(
+      expect.objectContaining({ invited_user_id: "invited-user-1" })
     )
   })
 

@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { MailCheck } from "lucide-react"
 import { AvatarIcon } from "@/components/icons/radix-icons-avatar"
@@ -10,6 +10,7 @@ import { EnvelopeClosedIcon } from "@/components/icons/radix-icons-envelope-clos
 import { LockClosedIcon } from "@/components/icons/radix-icons-lock-closed"
 import { LightWavesBackground } from "@/components/login/light-waves"
 import { createClient } from "@/utils/supabase/client"
+import { cn } from "@/lib/utils"
 
 const CHALK_COLORS = ["#2a7db5", "#1e6a9e", "#3a8dc5", "#1a5a8a", "#0a4a7a"]
 const inputClass =
@@ -25,10 +26,29 @@ function SignupForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [confirmationSent, setConfirmationSent] = useState(false)
+  const [inviteEmailLocked, setInviteEmailLocked] = useState(false)
 
-  const nextPath = inviteToken
-    ? `/accept-invite?token=${encodeURIComponent(inviteToken)}`
-    : "/onboarding"
+  // For invites, prefill and lock the email to the invited address so the
+  // password the invitee sets always lands on the right account.
+  useEffect(() => {
+    if (!inviteToken) return
+    let active = true
+    fetch(`/api/auth/claim-invite?token=${encodeURIComponent(inviteToken)}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return
+        if (typeof data.email === "string") {
+          setEmail(data.email)
+          setInviteEmailLocked(true)
+        } else if (typeof data.error === "string") {
+          setError(data.error)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [inviteToken])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -36,9 +56,37 @@ function SignupForm() {
     setError(null)
 
     const supabase = createClient()
+
+    // Invite path: don't create a fresh account — the invite already created a
+    // passwordless shell. Claim it (set the password + join the venue), then
+    // sign in normally. This is immune to the mail-scanner problem because it
+    // never depends on the auth token inside the invite email.
+    if (inviteToken) {
+      const response = await fetch("/api/auth/claim-invite", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: inviteToken, name, email, password }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setError(typeof data.error === "string" ? data.error : "Unable to accept invite")
+        setLoading(false)
+        return
+      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) {
+        setError("Your account is ready — please sign in.")
+        setLoading(false)
+        router.push("/login")
+        return
+      }
+      router.push("/dashboard")
+      return
+    }
+
     const redirectTo =
       typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent("/onboarding")}`
         : undefined
 
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -72,7 +120,7 @@ function SignupForm() {
         setLoading(false)
         return
       }
-      router.push(nextPath)
+      router.push("/onboarding")
       return
     }
 
@@ -82,7 +130,7 @@ function SignupForm() {
       return
     }
 
-    router.push(nextPath)
+    router.push("/onboarding")
   }
 
   if (confirmationSent) {
@@ -117,8 +165,12 @@ function SignupForm() {
       className="w-[92%] max-w-[420px] rounded-2xl border border-white/[0.08] bg-[rgba(10,10,10,0.45)] px-6 py-8 backdrop-blur-md sm:px-8 sm:py-10"
     >
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white sm:text-2xl">Create your account</h1>
-        <p className="mt-1 text-sm text-white/40">Get started with Chalk</p>
+        <h1 className="text-xl font-semibold text-white sm:text-2xl">
+          {inviteToken ? "Accept your invitation" : "Create your account"}
+        </h1>
+        <p className="mt-1 text-sm text-white/40">
+          {inviteToken ? "Set a password to join your team" : "Get started with Chalk"}
+        </p>
       </div>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">
@@ -139,7 +191,8 @@ function SignupForm() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="Email"
             required
-            className={inputClass}
+            readOnly={inviteEmailLocked}
+            className={cn(inputClass, inviteEmailLocked && "cursor-not-allowed opacity-70")}
           />
         </div>
         <div className="flex items-center gap-3 rounded-lg border border-[0.5px] border-white/10 bg-white/[0.06] px-[14px] py-3 transition-colors focus-within:border-primary sm:py-[11px]">
