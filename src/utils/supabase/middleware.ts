@@ -20,6 +20,7 @@ function isExemptPath(pathname: string) {
     pathname.startsWith('/accept-invite') ||
     pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/api/auth/accept-invite') ||
+    pathname.startsWith('/api/auth/claim-invite') ||
     pathname.startsWith('/api/billing/portal')
   )
 }
