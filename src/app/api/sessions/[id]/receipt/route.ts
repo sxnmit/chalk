@@ -24,15 +24,23 @@ export async function GET(
         .single(),
       supabase
         .from("sessions")
-        .select("*, tables(name), venues(name, receipt_footer, currency), rates(label)")
+        .select("*, tables(name), rates(label)")
         .eq("id", sessionId)
         .eq("venue_id", venueId)
         .single(),
     ])
 
     if (paymentErr || sessionErr || !payment || !session) {
-      return NextResponse.json({ error: "Receipt not found" }, { status: 404 })
+      const detail = paymentErr?.message ?? sessionErr?.message ?? "no matching rows"
+      console.error("Receipt query failed", { paymentErr, sessionErr })
+      return NextResponse.json({ error: "Receipt not found", detail }, { status: 404 })
     }
+
+    const { data: venue } = await supabase
+      .from("venues")
+      .select("name, receipt_footer, currency")
+      .eq("id", venueId)
+      .maybeSingle()
 
     const { data: orderItems, error: itemsErr } = await supabase
       .from("order_items")
@@ -40,10 +48,12 @@ export async function GET(
       .eq("session_id", sessionId)
       .eq("venue_id", venueId)
 
-    if (itemsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    if (itemsErr) {
+      console.error("Receipt: order_items query failed", itemsErr)
+      return NextResponse.json({ error: "Internal server error", detail: "order_items: " + itemsErr.message }, { status: 500 })
+    }
 
-    // Refunds/voids/comps recorded against this payment (append-only child of
-    // payments). Venue-scoped so it survives RLS. Newest first for display.
+    let refunds: { amount_cents: number; reason: string; kind: "refund" | "void" | "comp"; created_at: string }[] = []
     const { data: refundRows, error: refundsErr } = await supabase
       .from("refunds")
       .select("amount_cents, reason, kind, created_at")
@@ -51,14 +61,14 @@ export async function GET(
       .eq("venue_id", venueId)
       .order("created_at", { ascending: false })
 
-    if (refundsErr) return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-
-    const refunds = (refundRows ?? []).map((r) => ({
-      amount_cents: r.amount_cents,
-      reason: r.reason,
-      kind: r.kind as "refund" | "void" | "comp",
-      created_at: r.created_at,
-    }))
+    if (!refundsErr) {
+      refunds = (refundRows ?? []).map((r) => ({
+        amount_cents: r.amount_cents,
+        reason: r.reason,
+        kind: r.kind as "refund" | "void" | "comp",
+        created_at: r.created_at,
+      }))
+    }
     const refundedTotalCents = refunds.reduce((sum, r) => sum + r.amount_cents, 0)
 
     const startedAt = session.started_at
@@ -67,14 +77,13 @@ export async function GET(
       (new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000
     )
     const tables = session.tables as unknown as { name: string } | null
-    const venues = session.venues as unknown as { name: string; receipt_footer?: string; currency?: string } | null
 
     const isTab = session.table_id === null
 
     return NextResponse.json({
-      venueName: venues?.name ?? "Venue",
-      receiptFooter: venues?.receipt_footer ?? "",
-      currency: venues?.currency ?? "CAD",
+      venueName: venue?.name ?? "Venue",
+      receiptFooter: venue?.receipt_footer ?? "",
+      currency: venue?.currency ?? "CAD",
       receiptNumber: paymentId.slice(-8).toUpperCase(),
       createdAt: payment.created_at,
       tableName: tables?.name ?? (isTab ? (session.player_name || "Tab") : "Table"),
@@ -105,11 +114,11 @@ export async function GET(
       canRefund: role === "owner" || role === "manager",
     })
   } catch (e) {
-    console.error("Receipt generation failed:", e)
-    const isAuthError = e instanceof Error && e.message === "Not authenticated"
-    return NextResponse.json(
-      { error: isAuthError ? "Unauthorized" : "Internal server error" },
-      { status: isAuthError ? 401 : 500 },
-    )
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error("Receipt generation failed:", msg, e)
+    if (msg === "Not authenticated") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    return NextResponse.json({ error: "Internal server error", detail: msg }, { status: 500 })
   }
 }
