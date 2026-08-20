@@ -132,6 +132,7 @@ export async function loadDashboardData(): Promise<{
   peakSchedule: PeakSchedule
   currency: string
   todayCompletedSessionsCount: number
+  todayRevenue: number
 }> {
   const supabase = await createClient()
   const { venueId, role } = await getProfileFromToken(supabase)
@@ -258,6 +259,7 @@ export async function loadDashboardData(): Promise<{
     peakSchedule,
     currency: venueRow?.currency ?? "CAD",
     todayCompletedSessionsCount: todaySummary.sessionCount,
+    todayRevenue: todaySummary.totalRevenue,
   }
 }
 

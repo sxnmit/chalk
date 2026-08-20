@@ -77,6 +77,8 @@ describe("loadDashboardData", () => {
     expect(result.rates.find((r) => r.id === "r1")).toMatchObject({ isActive: true })
 
     expect(result.todayCompletedSessionsCount).toBe(1)
+    // 2 hours (16:00→18:00) at the snapshotted $25/hr rate, no order items configured.
+    expect(result.todayRevenue).toBe(50)
   })
 
   it("sums order items onto the occupied table's session", async () => {

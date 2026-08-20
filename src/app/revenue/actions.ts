@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/utils/supabase/server"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getProfile } from "@/lib/auth"
-import { businessDayRangeUTC, businessDayOf, formatLocalDateTime } from "@/lib/business-day"
+import { businessDayRangeUTC, businessDayOf, formatLocalDateTime, addDays } from "@/lib/business-day"
 import { formatAuditDiff, formatAuditSource, collectShipmentIds } from "@/lib/audit"
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
@@ -19,16 +19,31 @@ export interface RevenueData {
   tipsCollected: number       // gross
   sessionCount: number        // number of completed (paid) sessions
   avgSessionMinutes: number
+  avgTicket: number           // totalRevenue / sessionCount
   byMethod: { method: string; count: number; revenue: number }[]
   peakHours: { hour: number; count: number }[]
   tierBreakdown: { label: string; sessionCount: number; revenue: number }[]
+  dailyRevenue: { date: string; revenue: number }[]                    // business-day buckets, ascending
+  dayOfWeek: { day: number; revenue: number }[]                        // 0=Sunday..6=Saturday
+  tableUtilization: {
+    tableName: string
+    sessionCount: number
+    occupiedMinutes: number
+    avgSessionMinutes: number
+    utilizationPct: number       // occupied hours / total hours in range
+    revenue: number
+  }[]
+  topItems: { name: string; category: string; quantitySold: number; revenue: number }[]
+  previousPeriod: { totalRevenue: number; sessionCount: number; avgTicket: number }
   currency: string
 }
 
 interface SessionEmbed {
   started_at: string
   ended_at: string | null
+  table_id: string | null
   rates: { label: string } | null
+  tables: { name: string } | null
 }
 
 /**
@@ -52,37 +67,81 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
   const cutoffHour = venue?.business_day_cutoff_hour ?? 3
   const { gte, lt } = businessDayRangeUTC(from, to, timezone, cutoffHour)
 
+  // Equal-length period immediately preceding `from`, for "vs. previous period" deltas.
+  const spanDays = Math.round((new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / (24 * 60 * 60 * 1000)) + 1
+  const prevTo = addDays(from, -1)
+  const prevFrom = addDays(from, -spanDays)
+  const { gte: prevGte, lt: prevLt } = businessDayRangeUTC(prevFrom, prevTo, timezone, cutoffHour)
+
   // Collected sales in range. We include 'refunded' (fully-refunded) payments,
   // not just 'succeeded', so their gross still lands here and is then netted
   // back out below — otherwise a full refund would silently vanish rather than
   // showing as gross − refund = 0. Range is the session's start time
   // (inner-joined), matching what staff see per business day.
-  const { data: payments, error } = await supabase
-    .from("payments")
-    .select("id, grand_total_cents, table_total_cents, items_total_cents, tax_cents, tip_cents, method, sessions!inner(started_at, ended_at, rates(label))")
-    .eq("venue_id", venueId)
-    .in("status", ["succeeded", "refunded"])
-    .gte("sessions.started_at", gte)
-    .lt("sessions.started_at", lt)
+  const [
+    { data: payments, error },
+    { data: prevPayments, error: prevError },
+    { data: tableSessions, error: tableSessionsError },
+    { data: orderItemRows, error: orderItemsError },
+  ] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("id, grand_total_cents, table_total_cents, items_total_cents, tax_cents, tip_cents, method, sessions!inner(started_at, ended_at, table_id, rates(label), tables(name))")
+      .eq("venue_id", venueId)
+      .in("status", ["succeeded", "refunded"])
+      .gte("sessions.started_at", gte)
+      .lt("sessions.started_at", lt),
+    supabase
+      .from("payments")
+      .select("id, grand_total_cents, tip_cents, sessions!inner(started_at)")
+      .eq("venue_id", venueId)
+      .in("status", ["succeeded", "refunded"])
+      .gte("sessions.started_at", prevGte)
+      .lt("sessions.started_at", prevLt),
+    // Table occupancy is sourced from `sessions` directly (not `payments`) since a
+    // session can be ended without ever completing checkout — see endSessionAction.
+    supabase
+      .from("sessions")
+      .select("table_id, started_at, ended_at, tables(name)")
+      .eq("venue_id", venueId)
+      .not("table_id", "is", null)
+      .not("ended_at", "is", null)
+      .gte("started_at", gte)
+      .lt("started_at", lt),
+    supabase
+      .from("order_items")
+      .select("menu_item_id, quantity, price_at_time_cents, menu_items(name, category), sessions!inner(started_at)")
+      .eq("venue_id", venueId)
+      .gte("sessions.started_at", gte)
+      .lt("sessions.started_at", lt),
+  ])
 
   if (error) throw error
+  if (prevError) throw prevError
+  if (tableSessionsError) throw tableSessionsError
+  if (orderItemsError) throw orderItemsError
 
   const rows = payments ?? []
 
   // Net out refunds/voids/comps recorded against those payments. Attributing a
   // refund to its sale's period (not the refund's own date) keeps net revenue
-  // consistent with how gross is bucketed above.
-  const paymentIds = rows.map((p) => p.id as string)
-  let refundsTotalCents = 0
-  if (paymentIds.length > 0) {
+  // consistent with how gross is bucketed above. Computed for both periods so
+  // the "vs. previous period" comparison is net-vs-net, not net-vs-gross.
+  const sumRefundsCents = async (paymentIds: string[]): Promise<number> => {
+    if (paymentIds.length === 0) return 0
     const { data: refundRows, error: refundErr } = await supabase
       .from("refunds")
       .select("amount_cents")
       .eq("venue_id", venueId)
       .in("payment_id", paymentIds)
     if (refundErr) throw refundErr
-    refundsTotalCents = (refundRows ?? []).reduce((sum, r) => sum + (r.amount_cents as number), 0)
+    return (refundRows ?? []).reduce((sum, r) => sum + (r.amount_cents as number), 0)
   }
+
+  const [refundsTotalCents, prevRefundsTotalCents] = await Promise.all([
+    sumRefundsCents(rows.map((p) => p.id as string)),
+    sumRefundsCents((prevPayments ?? []).map((p) => p.id as string)),
+  ])
 
   let totalRevenue = 0
   let tableRevenue = 0
@@ -95,6 +154,8 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
   const hourCounts = new Array(24).fill(0)
   const methodMap = new Map<string, { count: number; revenue: number }>()
   const tierMap = new Map<string, { sessionCount: number; revenue: number }>()
+  const dailyMap = new Map<string, number>()
+  const tableRevenueMap = new Map<string, number>()
 
   const hourFmt = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone, hour: "2-digit", hourCycle: "h23",
@@ -105,14 +166,20 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
   for (const p of rows) {
     const session = p.sessions as unknown as SessionEmbed | null
 
-    totalRevenue += p.grand_total_cents - p.tip_cents
+    const netRevenue = p.grand_total_cents - p.tip_cents
+    totalRevenue += netRevenue
     tableRevenue += p.table_total_cents
     itemsRevenue += p.items_total_cents
     taxCollected += p.tax_cents
     tipsCollected += p.tip_cents
 
     const m = methodMap.get(p.method) ?? { count: 0, revenue: 0 }
-    methodMap.set(p.method, { count: m.count + 1, revenue: m.revenue + p.grand_total_cents - p.tip_cents })
+    methodMap.set(p.method, { count: m.count + 1, revenue: m.revenue + netRevenue })
+
+    if (session?.started_at) {
+      const dayKey = businessDayOf(new Date(session.started_at), timezone, cutoffHour)
+      dailyMap.set(dayKey, (dailyMap.get(dayKey) ?? 0) + netRevenue)
+    }
 
     if (session?.started_at && session.ended_at) {
       const sMs = new Date(session.started_at).getTime()
@@ -131,6 +198,43 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
     const label = session?.rates?.label ?? "Other"
     const tier = tierMap.get(label) ?? { sessionCount: 0, revenue: 0 }
     tierMap.set(label, { sessionCount: tier.sessionCount + 1, revenue: tier.revenue + p.table_total_cents })
+
+    if (session?.table_id) {
+      tableRevenueMap.set(session.table_id, (tableRevenueMap.get(session.table_id) ?? 0) + p.table_total_cents)
+    }
+  }
+
+  let prevGrossRevenue = 0
+  for (const p of prevPayments ?? []) {
+    prevGrossRevenue += p.grand_total_cents - p.tip_cents
+  }
+  const prevTotalRevenueCents = prevGrossRevenue - prevRefundsTotalCents
+  const prevSessionCount = (prevPayments ?? []).length
+
+  interface TableSessionEmbed { table_id: string | null; started_at: string; ended_at: string | null; tables: { name: string } | null }
+  const tableStatsMap = new Map<string, { tableName: string; sessionCount: number; occupiedMinutes: number }>()
+  for (const s of (tableSessions ?? []) as unknown as TableSessionEmbed[]) {
+    if (!s.table_id || !s.ended_at) continue
+    const minutes = (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000
+    const entry = tableStatsMap.get(s.table_id) ?? { tableName: s.tables?.name ?? "Unknown", sessionCount: 0, occupiedMinutes: 0 }
+    entry.sessionCount++
+    entry.occupiedMinutes += minutes
+    tableStatsMap.set(s.table_id, entry)
+  }
+  const periodHours = spanDays * 24
+
+  interface OrderItemEmbed { menu_item_id: string; quantity: number; price_at_time_cents: number; menu_items: { name: string; category: string } | null }
+  const itemStatsMap = new Map<string, { name: string; category: string; quantitySold: number; revenue: number }>()
+  for (const oi of (orderItemRows ?? []) as unknown as OrderItemEmbed[]) {
+    const entry = itemStatsMap.get(oi.menu_item_id) ?? {
+      name: oi.menu_items?.name ?? "Deleted item",
+      category: oi.menu_items?.category ?? "Other",
+      quantitySold: 0,
+      revenue: 0,
+    }
+    entry.quantitySold += oi.quantity
+    entry.revenue += oi.quantity * oi.price_at_time_cents
+    itemStatsMap.set(oi.menu_item_id, entry)
   }
 
   const toDollars = (cents: number) => cents / 100
@@ -149,6 +253,7 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
     tipsCollected: toDollars(tipsCollected),
     sessionCount: rows.length,
     avgSessionMinutes: durationCount > 0 ? totalMinutes / durationCount : 0,
+    avgTicket: rows.length > 0 ? toDollars(grossRevenueCents - refundsTotalCents) / rows.length : 0,
     byMethod: [...methodMap.entries()]
       .map(([method, d]) => ({ method, count: d.count, revenue: toDollars(d.revenue) }))
       .sort((a, b) => b.revenue - a.revenue),
@@ -156,6 +261,35 @@ export async function loadRevenueData(from: string, to: string): Promise<Revenue
     tierBreakdown: [...tierMap.entries()]
       .map(([label, d]) => ({ label, sessionCount: d.sessionCount, revenue: toDollars(d.revenue) }))
       .sort((a, b) => b.revenue - a.revenue),
+    dailyRevenue: [...dailyMap.entries()]
+      .map(([date, revenue]) => ({ date, revenue: toDollars(revenue) }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    dayOfWeek: (() => {
+      const buckets = new Array(7).fill(0)
+      for (const [date, revenue] of dailyMap) {
+        buckets[new Date(`${date}T00:00:00Z`).getUTCDay()] += revenue
+      }
+      return buckets.map((revenue, day) => ({ day, revenue: toDollars(revenue) }))
+    })(),
+    tableUtilization: [...tableStatsMap.entries()]
+      .map(([tableId, d]) => ({
+        tableName: d.tableName,
+        sessionCount: d.sessionCount,
+        occupiedMinutes: Math.round(d.occupiedMinutes),
+        avgSessionMinutes: d.occupiedMinutes / d.sessionCount,
+        utilizationPct: Math.min(100, (d.occupiedMinutes / 60 / periodHours) * 100),
+        revenue: toDollars(tableRevenueMap.get(tableId) ?? 0),
+      }))
+      .sort((a, b) => b.occupiedMinutes - a.occupiedMinutes),
+    topItems: [...itemStatsMap.values()]
+      .map((d) => ({ name: d.name, category: d.category, quantitySold: d.quantitySold, revenue: toDollars(d.revenue) }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10),
+    previousPeriod: {
+      totalRevenue: toDollars(prevTotalRevenueCents),
+      sessionCount: prevSessionCount,
+      avgTicket: prevSessionCount > 0 ? toDollars(prevTotalRevenueCents) / prevSessionCount : 0,
+    },
     currency: venue?.currency ?? "CAD",
   }
 }

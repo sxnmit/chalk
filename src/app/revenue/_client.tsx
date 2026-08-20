@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote, Download, ScrollText } from "lucide-react"
+import { DollarSign, Hash, Clock, Menu, CalendarIcon, CreditCard, Banknote, Download, ScrollText, TrendingUp, TrendingDown, Receipt, LayoutGrid, UtensilsCrossed } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 import { SidebarPageLayout } from "@/components/dashboard/sidebar-page-layout"
 import { Calendar } from "@/components/ui/calendar"
@@ -80,6 +80,20 @@ function formatHourLabel(hour: number): string {
   return `${hour - 12}p`
 }
 
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/** `YYYY-MM-DD` bucket date -> short "Mon 12" label, parsed as a plain calendar date (no tz shift). */
+function formatDayLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(y, m - 1, d))
+}
+
+/** Percent change vs. a baseline. Null when there's no baseline to compare against. */
+function deltaPct(current: number, previous: number): number | null {
+  if (previous === 0) return null
+  return ((current - previous) / previous) * 100
+}
+
 // ── Stat chip ──────────────────────────────────────────────────────────────────
 
 interface StatChipProps {
@@ -87,15 +101,29 @@ interface StatChipProps {
   label: string
   value: string
   highlight?: boolean
+  delta?: number | null
 }
 
-function StatChip({ icon, label, value, highlight = false }: StatChipProps) {
+function DeltaBadge({ pct }: { pct: number | null | undefined }) {
+  if (pct === null || pct === undefined) return null
+  const up = pct >= 0
+  const Icon = up ? TrendingUp : TrendingDown
+  return (
+    <span className={`mt-0.5 inline-flex items-center gap-1 text-xs font-medium ${up ? "text-success" : "text-destructive"}`}>
+      <Icon className="h-3 w-3" />
+      {Math.abs(pct).toFixed(0)}% vs. prior period
+    </span>
+  )
+}
+
+function StatChip({ icon, label, value, highlight = false, delta }: StatChipProps) {
   return (
     <div className={`flex items-center gap-4 rounded-xl border px-5 py-4 ${highlight ? "border-success/30 bg-success/10" : "border-border/50 bg-secondary/50"}`}>
       <span className={highlight ? "text-success" : "text-muted-foreground"}>{icon}</span>
       <div>
         <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
         <div className={`text-2xl font-bold ${highlight ? "text-success" : "text-foreground"}`}>{value}</div>
+        <DeltaBadge pct={delta} />
       </div>
     </div>
   )
@@ -124,9 +152,15 @@ const EMPTY: RevenueData = {
   tipsCollected: 0,
   sessionCount: 0,
   avgSessionMinutes: 0,
+  avgTicket: 0,
   byMethod: [],
   peakHours: new Array(24).fill(0).map((_, hour) => ({ hour, count: 0 })),
   tierBreakdown: [],
+  dailyRevenue: [],
+  dayOfWeek: DOW_LABELS.map((_, day) => ({ day, revenue: 0 })),
+  tableUtilization: [],
+  topItems: [],
+  previousPeriod: { totalRevenue: 0, sessionCount: 0, avgTicket: 0 },
   currency: "CAD",
 }
 
@@ -220,6 +254,10 @@ export function RevenuePageClient() {
   }, [range])
 
   const maxCount = Math.max(1, ...data.peakHours.map((h) => h.count))
+  const maxDailyRevenue = Math.max(1, ...data.dailyRevenue.map((d) => d.revenue))
+  const dailyLabelStride = Math.max(1, Math.ceil(data.dailyRevenue.length / 10))
+  const maxDowRevenue = Math.max(1, ...data.dayOfWeek.map((d) => d.revenue))
+  const maxTableOccupiedMinutes = Math.max(1, ...data.tableUtilization.map((t) => t.occupiedMinutes))
 
   return (
     <SidebarPageLayout>
@@ -303,10 +341,65 @@ export function RevenuePageClient() {
             <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
 
               {/* Stat chips */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <StatChip icon={<DollarSign className="h-6 w-6" />} label="Total Revenue" value={formatCurrency(data.totalRevenue, data.currency)} highlight />
-                <StatChip icon={<Hash className="h-6 w-6" />} label="Sessions" value={String(data.sessionCount)} />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <StatChip
+                  icon={<DollarSign className="h-6 w-6" />}
+                  label="Total Revenue"
+                  value={formatCurrency(data.totalRevenue, data.currency)}
+                  highlight
+                  delta={deltaPct(data.totalRevenue, data.previousPeriod.totalRevenue)}
+                />
+                <StatChip
+                  icon={<Hash className="h-6 w-6" />}
+                  label="Sessions"
+                  value={String(data.sessionCount)}
+                  delta={deltaPct(data.sessionCount, data.previousPeriod.sessionCount)}
+                />
+                <StatChip
+                  icon={<Receipt className="h-6 w-6" />}
+                  label="Avg Ticket"
+                  value={formatCurrency(data.avgTicket, data.currency)}
+                  delta={deltaPct(data.avgTicket, data.previousPeriod.avgTicket)}
+                />
                 <StatChip icon={<Clock className="h-6 w-6" />} label="Avg Session" value={formatAvgDuration(data.avgSessionMinutes)} />
+              </div>
+
+              {/* Daily revenue trend */}
+              <div className="rounded-xl border border-border/50 bg-card p-5">
+                <h2 className="mb-5 text-sm font-semibold uppercase tracking-widest text-muted-foreground">Revenue Trend</h2>
+                {data.dailyRevenue.length === 0 ? (
+                  <p className="py-10 text-center text-sm text-muted-foreground">No revenue in this period.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[520px]">
+                      <div className="flex items-end gap-1 h-[140px]">
+                        {data.dailyRevenue.map(({ date, revenue }) => {
+                          const barH = Math.max(revenue > 0 ? 4 : 1, Math.round((revenue / maxDailyRevenue) * 130))
+                          return (
+                            <div key={date} className="group relative flex flex-1 flex-col items-center justify-end cursor-default">
+                              <span className="pointer-events-none absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[9px] tabular-nums text-foreground group-hover:block">
+                                {formatCurrency(revenue, data.currency)}
+                              </span>
+                              <div
+                                className="w-full rounded-t bg-primary/40 transition-colors group-hover:bg-primary"
+                                style={{ height: `${barH}px` }}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="mt-2 flex">
+                        {data.dailyRevenue.map(({ date }, i) => (
+                          <div key={date} className="flex flex-1 justify-center">
+                            <span className="text-[10px] text-muted-foreground">
+                              {i % dailyLabelStride === 0 ? formatDayLabel(date) : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Revenue breakdown + payment methods */}
@@ -397,6 +490,110 @@ export function RevenuePageClient() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Revenue by day of week */}
+              <div className="rounded-xl border border-border/50 bg-card p-5">
+                <h2 className="mb-5 text-sm font-semibold uppercase tracking-widest text-muted-foreground">Revenue by Day of Week</h2>
+                <div className="flex items-end gap-2 h-[110px]">
+                  {data.dayOfWeek.map(({ day, revenue }) => {
+                    const barH = Math.max(revenue > 0 ? 4 : 1, Math.round((revenue / maxDowRevenue) * 100))
+                    return (
+                      <div key={day} className="group relative flex flex-1 flex-col items-center justify-end cursor-default">
+                        <span className="pointer-events-none absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[9px] tabular-nums text-foreground group-hover:block">
+                          {formatCurrency(revenue, data.currency)}
+                        </span>
+                        <div
+                          className="w-full rounded-t bg-primary/40 transition-colors group-hover:bg-primary"
+                          style={{ height: `${barH}px` }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  {data.dayOfWeek.map(({ day }) => (
+                    <div key={day} className="flex flex-1 justify-center">
+                      <span className="text-[10px] text-muted-foreground">{DOW_LABELS[day]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Table utilization */}
+              <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+                <div className="flex items-center gap-2 border-b border-border/50 px-5 py-4">
+                  <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Table Utilization</h2>
+                </div>
+                {data.tableUtilization.length === 0 ? (
+                  <p className="px-5 py-10 text-center text-sm text-muted-foreground">No table sessions in this period.</p>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border/30">
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Table</th>
+                        <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Sessions</th>
+                        <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Avg Length</th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Occupancy</th>
+                        <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.tableUtilization.map((t) => (
+                        <tr key={t.tableName} className="border-b border-border/20 last:border-0">
+                          <td className="px-5 py-3.5 font-medium text-foreground">{t.tableName}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums text-muted-foreground">{t.sessionCount}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums text-muted-foreground">{formatAvgDuration(t.avgSessionMinutes)}</td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2">
+                              <div className="h-1.5 w-20 overflow-hidden rounded-full bg-secondary">
+                                <div
+                                  className="h-full rounded-full bg-primary"
+                                  style={{ width: `${Math.max(2, (t.occupiedMinutes / maxTableOccupiedMinutes) * 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-xs tabular-nums text-muted-foreground">{t.utilizationPct.toFixed(0)}%</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-success">{formatCurrency(t.revenue, data.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Top selling items */}
+              <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+                <div className="flex items-center gap-2 border-b border-border/50 px-5 py-4">
+                  <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Top Selling Items</h2>
+                </div>
+                {data.topItems.length === 0 ? (
+                  <p className="px-5 py-10 text-center text-sm text-muted-foreground">No food & drink orders in this period.</p>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border/30">
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Item</th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Category</th>
+                        <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Qty Sold</th>
+                        <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.topItems.map((item, i) => (
+                        <tr key={`${item.name}-${i}`} className="border-b border-border/20 last:border-0">
+                          <td className="px-5 py-3.5 font-medium text-foreground">{item.name}</td>
+                          <td className="px-5 py-3.5 text-muted-foreground">{item.category}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums text-muted-foreground">{item.quantitySold}</td>
+                          <td className="px-5 py-3.5 text-right tabular-nums font-semibold text-success">{formatCurrency(item.revenue, data.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
 
               {/* Rate tier breakdown */}

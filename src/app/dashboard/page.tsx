@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [tables, setTables] = useState<PoolTable[]>([])
   const [rates, setRates] = useState<Rate[]>([])
   const [todayCompletedSessionsCount, setTodayCompletedSessionsCount] = useState(0)
+  const [todayRevenue, setTodayRevenue] = useState(0)
   const [startModalTable, setStartModalTable] = useState<PoolTable | null>(null)
   const [endModalTable, setEndModalTable] = useState<PoolTable | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -57,7 +58,7 @@ export default function DashboardPage() {
     }, 15000)
 
     loadDashboardData()
-      .then(({ tables, rates, userRole, venueName: name, peakSchedule: ps, currency: cur, todayCompletedSessionsCount: completed }) => {
+      .then(({ tables, rates, userRole, venueName: name, peakSchedule: ps, currency: cur, todayCompletedSessionsCount: completed, todayRevenue: revenue }) => {
         setTables(tables)
         setRates(rates)
         setIsAdmin(userRole === "owner" || userRole === "manager")
@@ -66,6 +67,7 @@ export default function DashboardPage() {
         setPeakSchedule(ps)
         setCurrency(cur)
         setTodayCompletedSessionsCount(completed)
+        setTodayRevenue(revenue)
       })
       .catch((err) => {
         console.error("Failed to load dashboard:", err)
@@ -83,11 +85,13 @@ export default function DashboardPage() {
       peakSchedule: ps,
       currency: cur,
       todayCompletedSessionsCount: completed,
+      todayRevenue: revenue,
     } = await loadDashboardData()
     setTables(freshTables)
     setPeakSchedule(ps)
     setCurrency(cur)
     setTodayCompletedSessionsCount(completed)
+    setTodayRevenue(revenue)
   }, [])
 
   useEffect(() => {
@@ -151,6 +155,8 @@ export default function DashboardPage() {
           <StatBar
             activeTables={activeTables}
             completedSessions={todayCompletedSessionsCount}
+            todayRevenue={todayRevenue}
+            currency={currency}
           />
 
           <main className="flex-1 px-4 pb-8 pt-4 sm:px-6 xl:px-8">

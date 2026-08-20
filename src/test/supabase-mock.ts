@@ -92,9 +92,14 @@ export function createMockClient(options: MockClientOptions = {}) {
     })
   )
 
+  // Defaults to a no-op result; tests that exercise an RPC call (e.g. the
+  // stock-checked order-item insert) reassign `client.rpc` to a fitted mock.
+  const rpc = vi.fn(() => Promise.resolve({ data: null, error: null }))
+
   return {
     from,
     auth: { getSession, getUser },
+    rpc,
     /** Every QueryBuilder opened via `.from(table)`, in call order. */
     buildersFor: (table: string): QueryBuilder[] => builders[table] ?? [],
   }
